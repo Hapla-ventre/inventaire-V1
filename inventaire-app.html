@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Inventaire</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0d0d0f;
+    --surface: #16161a;
+    --surface2: #1e1e24;
+    --border: #2a2a32;
+    --accent: #00e5a0;
+    --accent-dim: rgba(0,229,160,0.12);
+    --accent-dim2: rgba(0,229,160,0.06);
+    --warn: #ff9f43;
+    --warn-dim: rgba(255,159,67,0.12);
+    --danger: #ff6b6b;
+    --danger-dim: rgba(255,107,107,0.12);
+    --text: #f0f0f4;
+    --text2: #8888a0;
+    --text3: #55556a;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --r: 14px;
+    --r-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* SCREENS */
+  .screen { display: none; flex-direction: column; min-height: 100dvh; }
+  .screen.active { display: flex; }
+
+  /* ── CONFIG SCREEN ── */
+  #screen-config {
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    gap: 0;
+    background: var(--bg);
+  }
+
+  .config-logo {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 48px;
+    opacity: 0.8;
+  }
+
+  .config-title {
+    font-size: 28px;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 6px;
+    text-align: center;
+  }
+
+  .config-sub {
+    font-size: 14px;
+    color: var(--text2);
+    margin-bottom: 40px;
+    text-align: center;
+  }
+
+  .config-card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .field-label {
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.12em;
+    color: var(--text2);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .field-select, .field-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    padding: 12px 14px;
+    appearance: none;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field-select:focus, .field-input:focus { border-color: var(--accent); }
+
+  .select-wrap { position: relative; }
+  .select-wrap::after {
+    content: '';
+    position: absolute;
+    right: 14px; top: 50%;
+    transform: translateY(-50%);
+    width: 0; height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid var(--text2);
+    pointer-events: none;
+  }
+
+  .btn-primary {
+    width: 100%;
+    background: var(--accent);
+    color: #050f09;
+    border: none;
+    border-radius: var(--r-sm);
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 14px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    letter-spacing: 0.01em;
+  }
+  .btn-primary:active { opacity: 0.85; transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ── MAIN SCAN SCREEN ── */
+  #screen-main {
+    flex-direction: column;
+    background: var(--bg);
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .topbar-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .user-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  .user-name {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+  }
+
+  .topbar-stats {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .stat-pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 10px;
+  }
+  .stat-pill span { color: var(--text); font-weight: 500; }
+
+  /* Scan zone */
+  .scan-zone {
+    flex-shrink: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .scan-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--text3);
+    text-transform: uppercase;
+  }
+
+  .scan-input-row {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .ref-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r-sm);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    padding: 14px 16px;
+    outline: none;
+    transition: border-color 0.2s;
+    text-transform: uppercase;
+  }
+  .ref-input::placeholder { color: var(--text3); font-size: 16px; letter-spacing: 0.04em; }
+  .ref-input:focus { border-color: var(--accent); }
+  .ref-input.found { border-color: var(--accent); }
+  .ref-input.not-found { border-color: var(--danger); }
+
+  .btn-cam {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r-sm);
+    color: var(--text2);
+    width: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .btn-cam:active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .btn-cam svg { width: 22px; height: 22px; }
+
+  /* Article info card */
+  .article-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 16px;
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .article-card.found { border-color: var(--accent); background: var(--accent-dim2); }
+  .article-card.not-found { border-color: var(--danger); background: var(--danger-dim); }
+  .article-card.empty { opacity: 0.4; }
+
+  .article-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: var(--accent-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .article-icon svg { width: 18px; height: 18px; color: var(--accent); }
+  .article-card.not-found .article-icon { background: var(--danger-dim); }
+  .article-card.not-found .article-icon svg { color: var(--danger); }
+
+  .article-info { flex: 1; min-width: 0; }
+  .article-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .article-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 3px;
+  }
+  .article-stock {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text2);
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .article-stock-label { font-size: 10px; color: var(--text3); }
+
+  /* Qty section */
+  .qty-section {
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .qty-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .btn-qty {
+    width: 52px; height: 52px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r-sm);
+    color: var(--text);
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.1s;
+    flex-shrink: 0;
+  }
+  .btn-qty:active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); transform: scale(0.93); }
+
+  .qty-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r-sm);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 32px;
+    font-weight: 500;
+    text-align: center;
+    padding: 10px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .qty-input:focus { border-color: var(--accent); }
+
+  .btn-validate {
+    width: 100%;
+    background: var(--accent);
+    color: #050f09;
+    border: none;
+    border-radius: var(--r-sm);
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 600;
+    padding: 16px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-validate:active { opacity: 0.85; transform: scale(0.98); }
+  .btn-validate:disabled { opacity: 0.25; cursor: not-allowed; transform: none; }
+  .btn-validate.loading { opacity: 0.6; }
+
+  /* Log feed */
+  .log-section {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .log-header {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .log-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideIn 0.25s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .log-ref {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .log-name {
+    font-size: 12px;
+    color: var(--text2);
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .log-qty {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    flex-shrink: 0;
+  }
+  .log-time {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    flex-shrink: 0;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 40px;
+    padding: 12px 20px;
+    font-size: 14px;
+    color: var(--text);
+    font-family: var(--sans);
+    white-space: nowrap;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 100;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .toast.error { background: var(--danger-dim); border-color: var(--danger); color: var(--danger); }
+  .toast.warn { background: var(--warn-dim); border-color: var(--warn); color: var(--warn); }
+
+  /* Camera overlay */
+  .cam-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 200;
+    flex-direction: column;
+  }
+  .cam-overlay.active { display: flex; }
+  .cam-overlay video { flex: 1; object-fit: cover; width: 100%; }
+  .cam-overlay canvas { display: none; }
+
+  .cam-ui {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .cam-frame {
+    width: 260px; height: 80px;
+    border: 2px solid var(--accent);
+    border-radius: 10px;
+    box-shadow: 0 0 0 4000px rgba(0,0,0,0.55);
+    position: relative;
+  }
+  .cam-frame::before, .cam-frame::after {
+    content: '';
+    position: absolute;
+    width: 20px; height: 20px;
+    border-color: var(--accent);
+    border-style: solid;
+  }
+  .cam-frame::before { top: -2px; left: -2px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+  .cam-frame::after  { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+  .cam-hint {
+    margin-top: 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.6);
+  }
+
+  .cam-close {
+    position: absolute;
+    top: 48px; right: 20px;
+    background: rgba(255,255,255,0.1);
+    border: none;
+    border-radius: 50%;
+    width: 44px; height: 44px;
+    color: #fff;
+    font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    pointer-events: all;
+  }
+
+  /* Spinner */
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(5,15,9,0.3);
+    border-top-color: #050f09;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    display: none;
+  }
+  .loading .spinner { display: block; }
+  .loading .btn-text { display: none; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     CONFIGURATION — À MODIFIER AVANT DÉPLOIEMENT
+     ══════════════════════════════════════════ -->
+<script>
+const CONFIG = {
+  // ⬇ Coller ici l'ID du Google Spreadsheet (dans l'URL sheets.google.com/d/XXXX/edit)
+  SHEET_ID: "1dq0SrQOoXaBBRHVM2yB4SPk1LtKT-6iQrQZwA6ELtZo",
+
+  // ⬇ Nom de l'onglet contenant le catalogue (refs + libellés + stock avant)
+  SHEET_CATALOGUE: "Catalogue",
+
+  // ⬇ Nom de l'onglet où écrire les scans
+  SHEET_INVENTAIRE: "Inventaire",
+
+  // ⬇ URL du Google Apps Script déployé (Web App)
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbzpVtBDPkaaLdghB3qcxJamfd_eGp06hmSy1d3poyCbGy25FgX4nepAsKt-dy9qxAwIXA/exec",
+
+  // ⬇ Liste des utilisateurs (prénoms affichés dans le menu)
+  USERS: [
+    "Thomas", "Jessica", "Sebastien", "Etienne"
+  ],
+
+  // ⬇ Colonnes du catalogue (index 0 = col A)
+  COL_REF: 0,       // Colonne A : Référence
+  COL_LIBELLE: 1,   // Colonne B : Libellé
+  COL_STOCK: 2,     // Colonne C : Stock avant inventaire
+};
+</script>
+
+<!-- ══════════════════════════════════════════
+     SCREEN : CONNEXION
+     ══════════════════════════════════════════ -->
+<div id="screen-config" class="screen active">
+  <div class="config-logo">Inventaire · v1.0</div>
+  <h1 class="config-title">Bienvenue</h1>
+  <p class="config-sub">Sélectionnez votre nom pour commencer</p>
+
+  <div class="config-card">
+    <div>
+      <div class="field-label">Utilisateur</div>
+      <div class="select-wrap">
+        <select id="user-select" class="field-select">
+          <option value="">— Choisir —</option>
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <div class="field-label">Zone / Secteur <span style="color:var(--text3)">(optionnel)</span></div>
+      <input type="text" id="zone-input" class="field-input" placeholder="ex: Rayon A, Réserve…">
+    </div>
+
+    <button class="btn-primary" id="btn-start" disabled>
+      Commencer l'inventaire
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SCREEN : SCAN PRINCIPAL
+     ══════════════════════════════════════════ -->
+<div id="screen-main" class="screen">
+
+  <div class="topbar">
+    <div class="topbar-user">
+      <div class="user-dot"></div>
+      <span class="user-name" id="display-user">—</span>
+    </div>
+    <div class="topbar-stats">
+      <div class="stat-pill">Scannés : <span id="stat-count">0</span></div>
+      <div class="stat-pill" id="stat-zone-pill" style="display:none">Zone : <span id="stat-zone">—</span></div>
+    </div>
+  </div>
+
+  <!-- Saisie référence -->
+  <div class="scan-zone">
+    <div class="scan-label">Référence article</div>
+    <div class="scan-input-row">
+      <input type="text" id="ref-input" class="ref-input" placeholder="Ex: 172055 ou 2G6417A"
+             autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="btn-cam" id="btn-cam" title="Scanner avec la caméra">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Info article -->
+    <div class="article-card empty" id="article-card">
+      <div class="article-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <path d="M8 21h8M12 17v4"/>
+        </svg>
+      </div>
+      <div class="article-info">
+        <div class="article-name" id="article-name">Scannez une référence</div>
+        <div class="article-meta" id="article-meta">—</div>
+      </div>
+      <div class="article-stock">
+        <div class="article-stock-label">Stock actuel</div>
+        <div id="article-stock">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Quantité -->
+  <div class="qty-section">
+    <div class="qty-row">
+      <button class="btn-qty" id="btn-minus">−</button>
+      <input type="number" id="qty-input" class="qty-input" value="0" min="0">
+      <button class="btn-qty" id="btn-plus">+</button>
+    </div>
+    <button class="btn-validate" id="btn-validate" disabled>
+      <div class="spinner"></div>
+      <span class="btn-text">Valider</span>
+    </button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Log des scans -->
+  <div class="log-section">
+    <div class="log-header">Scans de cette session</div>
+    <div id="log-list"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     OVERLAY CAMÉRA (OCR)
+     ══════════════════════════════════════════ -->
+<div class="cam-overlay" id="cam-overlay">
+  <video id="cam-video" autoplay playsinline muted></video>
+  <canvas id="cam-canvas"></canvas>
+  <div class="cam-ui">
+    <div class="cam-frame"></div>
+    <div class="cam-hint">Pointez le numéro de référence</div>
+  </div>
+  <button class="cam-close" id="cam-close">✕</button>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Tesseract OCR via CDN -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<script>
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let currentUser = "";
+let currentZone = "";
+let catalogue = {};       // { REF: { libelle, stock } }
+let currentRef = null;
+let scanCount = 0;
+let camStream = null;
+let ocrWorker = null;
+let ocrInterval = null;
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+function init() {
+  const sel = document.getElementById('user-select');
+  CONFIG.USERS.forEach(u => {
+    const opt = document.createElement('option');
+    opt.value = u;
+    opt.textContent = u;
+    sel.appendChild(opt);
+  });
+
+  sel.addEventListener('change', () => {
+    document.getElementById('btn-start').disabled = !sel.value;
+  });
+
+  document.getElementById('btn-start').addEventListener('click', startSession);
+  document.getElementById('ref-input').addEventListener('input', onRefInput);
+  document.getElementById('ref-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('qty-input').focus();
+  });
+  document.getElementById('btn-minus').addEventListener('click', () => adjustQty(-1));
+  document.getElementById('btn-plus').addEventListener('click', () => adjustQty(1));
+  document.getElementById('btn-validate').addEventListener('click', validate);
+  document.getElementById('btn-cam').addEventListener('click', openCamera);
+  document.getElementById('cam-close').addEventListener('click', closeCamera);
+}
+
+// ══════════════════════════════════════════
+// SESSION START
+// ══════════════════════════════════════════
+async function startSession() {
+  currentUser = document.getElementById('user-select').value;
+  currentZone = document.getElementById('zone-input').value.trim();
+
+  document.getElementById('display-user').textContent = currentUser;
+  if (currentZone) {
+    document.getElementById('stat-zone').textContent = currentZone;
+    document.getElementById('stat-zone-pill').style.display = '';
+  }
+
+  showScreen('screen-main');
+
+  showToast('Chargement du catalogue…', '');
+  await loadCatalogue();
+}
+
+// ══════════════════════════════════════════
+// CHARGEMENT CATALOGUE DEPUIS GOOGLE SHEETS
+// ══════════════════════════════════════════
+async function loadCatalogue() {
+  // URL publique de lecture (le sheet doit être partagé "Tout le monde peut voir")
+  const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(CONFIG.SHEET_CATALOGUE)}`;
+
+  try {
+    const res = await fetch(url);
+    const text = await res.text();
+    // Google renvoie du JSONP — on extrait le JSON brut
+    const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
+    const rows = json.table.rows;
+
+    rows.forEach(row => {
+      const ref = (row.c[CONFIG.COL_REF]?.v ?? "").toString().trim().toUpperCase();
+      const libelle = (row.c[CONFIG.COL_LIBELLE]?.v ?? "").toString().trim();
+      const stock = row.c[CONFIG.COL_STOCK]?.v ?? null;
+      if (ref) catalogue[ref] = { libelle, stock };
+    });
+
+    const total = Object.keys(catalogue).length;
+    showToast(`${total} références chargées`, 'success');
+    document.getElementById('stat-count').textContent = `0/${total}`;
+  } catch (e) {
+    console.error(e);
+    showToast('Erreur de chargement — mode hors-ligne', 'warn');
+    // En cas d'erreur, on continue sans catalogue (saisie manuelle possible)
+  }
+}
+
+// ══════════════════════════════════════════
+// SAISIE RÉFÉRENCE
+// ══════════════════════════════════════════
+let refDebounce;
+function onRefInput(e) {
+  clearTimeout(refDebounce);
+  refDebounce = setTimeout(() => lookupRef(e.target.value.trim().toUpperCase()), 300);
+}
+
+function lookupRef(ref) {
+  currentRef = null;
+  const card = document.getElementById('article-card');
+  const input = document.getElementById('ref-input');
+  const validateBtn = document.getElementById('btn-validate');
+
+  if (!ref) {
+    card.className = 'article-card empty';
+    document.getElementById('article-name').textContent = 'Scannez une référence';
+    document.getElementById('article-meta').textContent = '—';
+    document.getElementById('article-stock').textContent = '—';
+    validateBtn.disabled = true;
+    return;
+  }
+
+  const article = catalogue[ref];
+  if (article) {
+    currentRef = ref;
+    input.className = 'ref-input found';
+    card.className = 'article-card found';
+    document.getElementById('article-name').textContent = article.libelle || ref;
+    document.getElementById('article-meta').textContent = ref;
+    document.getElementById('article-stock').textContent = article.stock !== null ? article.stock : '—';
+    validateBtn.disabled = false;
+  } else {
+    // Référence inconnue — on la note quand même
+    input.className = 'ref-input not-found';
+    card.className = 'article-card not-found';
+    document.getElementById('article-name').textContent = 'Référence inconnue';
+    document.getElementById('article-meta').textContent = ref + ' · non trouvé dans le catalogue';
+    document.getElementById('article-stock').textContent = '?';
+    currentRef = ref; // on permet quand même la saisie
+    validateBtn.disabled = false;
+
+    // Changer l'icône
+    card.querySelector('.article-icon svg').innerHTML = `
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+      <line x1="12" y1="16" x2="12.01" y2="16"/>`;
+  }
+}
+
+// ══════════════════════════════════════════
+// QUANTITÉ
+// ══════════════════════════════════════════
+function adjustQty(delta) {
+  const inp = document.getElementById('qty-input');
+  const v = Math.max(0, (parseInt(inp.value) || 0) + delta);
+  inp.value = v;
+}
+
+// ══════════════════════════════════════════
+// VALIDATION → ENVOI APPS SCRIPT
+// ══════════════════════════════════════════
+async function validate() {
+  if (!currentRef) return;
+
+  const qty = parseInt(document.getElementById('qty-input').value) || 0;
+  const btn = document.getElementById('btn-validate');
+  btn.disabled = true;
+  btn.classList.add('loading');
+
+  const payload = {
+    action: "addScan",
+    ref: currentRef,
+    libelle: catalogue[currentRef]?.libelle || "",
+    qty: qty,
+    stockBefore: catalogue[currentRef]?.stock ?? null,
+    user: currentUser,
+    zone: currentZone,
+    timestamp: new Date().toISOString()
+  };
+
+  try {
+    await fetch(CONFIG.APPS_SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    // Log local
+    addLog(currentRef, catalogue[currentRef]?.libelle || "?", qty);
+    scanCount++;
+    const total = Object.keys(catalogue).length;
+    document.getElementById('stat-count').textContent = total ? `${scanCount}/${total}` : scanCount;
+
+    showToast('✓ Enregistré', 'success');
+    resetScan();
+  } catch (e) {
+    showToast('Erreur réseau — réessayez', 'error');
+  }
+
+  btn.disabled = false;
+  btn.classList.remove('loading');
+}
+
+function resetScan() {
+  document.getElementById('ref-input').value = '';
+  document.getElementById('ref-input').className = 'ref-input';
+  document.getElementById('qty-input').value = 0;
+  document.getElementById('article-card').className = 'article-card empty';
+  document.getElementById('article-name').textContent = 'Scannez une référence';
+  document.getElementById('article-meta').textContent = '—';
+  document.getElementById('article-stock').textContent = '—';
+  document.getElementById('btn-validate').disabled = true;
+  currentRef = null;
+  document.getElementById('ref-input').focus();
+}
+
+// ══════════════════════════════════════════
+// LOG VISUEL
+// ══════════════════════════════════════════
+function addLog(ref, name, qty) {
+  const list = document.getElementById('log-list');
+  const now = new Date();
+  const time = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+  const item = document.createElement('div');
+  item.className = 'log-item';
+  item.innerHTML = `
+    <span class="log-ref">${ref}</span>
+    <span class="log-name">${name}</span>
+    <span class="log-qty">${qty}</span>
+    <span class="log-time">${time}</span>`;
+  list.prepend(item);
+}
+
+// ══════════════════════════════════════════
+// CAMÉRA & OCR
+// ══════════════════════════════════════════
+async function openCamera() {
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    const video = document.getElementById('cam-video');
+    video.srcObject = camStream;
+    document.getElementById('cam-overlay').classList.add('active');
+
+    // Init Tesseract
+    if (!ocrWorker) {
+      ocrWorker = await Tesseract.createWorker('eng', 1, {
+        logger: () => {}
+      });
+      await ocrWorker.setParameters({
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-',
+        tessedit_pageseg_mode: '7'
+      });
+    }
+
+    // Boucle OCR toutes les 1.5s
+    ocrInterval = setInterval(runOCR, 1500);
+  } catch (e) {
+    showToast('Caméra non disponible', 'error');
+  }
+}
+
+async function runOCR() {
+  const video = document.getElementById('cam-video');
+  const canvas = document.getElementById('cam-canvas');
+  if (video.readyState < 2) return;
+
+  const vw = video.videoWidth, vh = video.videoHeight;
+  // Zone centrale (260×80px équivalent)
+  const cropW = Math.round(vw * 0.5), cropH = Math.round(vh * 0.15);
+  const cropX = Math.round((vw - cropW) / 2);
+  const cropY = Math.round((vh - cropH) / 2);
+
+  canvas.width = cropW;
+  canvas.height = cropH;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+  // Contraste accru
+  ctx.filter = 'contrast(2) brightness(1.1)';
+  ctx.drawImage(canvas, 0, 0);
+
+  try {
+    const { data: { text } } = await ocrWorker.recognize(canvas);
+    const cleaned = text.replace(/\s/g, '').toUpperCase();
+    // Cherche la première séquence qui ressemble à une référence (4+ caractères alphanumériques)
+    const match = cleaned.match(/[A-Z0-9]{4,}/);
+    if (match) {
+      const ref = match[0];
+      closeCamera();
+      document.getElementById('ref-input').value = ref;
+      lookupRef(ref);
+      document.getElementById('qty-input').focus();
+    }
+  } catch (e) {}
+}
+
+function closeCamera() {
+  clearInterval(ocrInterval);
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  document.getElementById('cam-overlay').classList.remove('active');
+}
+
+// ══════════════════════════════════════════
+// UTILITAIRES
+// ══════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+let toastTimer;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  requestAnimationFrame(() => {
+    t.classList.add('show');
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+  });
+}
+
+init();
+</script>
+
+<!--
+════════════════════════════════════════════════════════
+  GOOGLE APPS SCRIPT À DÉPLOYER (copier dans script.google.com)
+════════════════════════════════════════════════════════
+
+const SHEET_ID = "VOTRE_SHEET_ID";
+const SHEET_INVENTAIRE = "Inventaire";
+
+function doPost(e) {
+  const data = JSON.parse(e.postData.contents);
+
+  if (data.action === "addScan") {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName(SHEET_INVENTAIRE);
+
+    const dataRange = sheet.getDataRange().getValues();
+    let rowIndex = -1;
+    for (let i = 1; i < dataRange.length; i++) {
+      if (String(dataRange[i][0]).trim().toUpperCase() === data.ref) {
+        rowIndex = i + 1;
+        break;
+      }
+    }
+
+    const stockBefore = data.stockBefore !== null ? data.stockBefore : "";
+    const stockAfter  = data.qty;
+    const delta       = (stockBefore !== "" && stockAfter !== null) ? stockAfter - stockBefore : "";
+
+    if (rowIndex > 0) {
+      sheet.getRange(rowIndex, 4).setValue(stockAfter);
+      sheet.getRange(rowIndex, 5).setValue(delta);
+      sheet.getRange(rowIndex, 6).setValue(data.user);
+      sheet.getRange(rowIndex, 7).setValue(data.timestamp);
+    } else {
+      sheet.appendRow([data.ref, data.libelle || "?", stockBefore, stockAfter, delta, data.user, data.timestamp]);
+    }
+  }
+
+  return ContentService
+    .createTextOutput(JSON.stringify({ ok: true }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// Colonnes : A: Référence | B: Libellé | C: Stock avant
+// D: Stock après | E: Delta | F: Utilisateur | G: Horodatage
+
+════════════════════════════════════════════════════════
+  STRUCTURE DU SHEET "Catalogue" (à importer depuis l'ERP)
+════════════════════════════════════════════════════════
+  A: Référence | B: Libellé | C: Stock avant inventaire
+════════════════════════════════════════════════════════
+-->
+</body>
+</html>
