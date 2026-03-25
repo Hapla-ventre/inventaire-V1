@@ -260,15 +260,15 @@ body {
 }
 .cl-label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
 .cl-ctrl { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-.cl-btn {
-  width: 36px; height: 36px; background: var(--surface2);
-  border: 1px solid var(--border); border-radius: 6px;
-  color: var(--text); font-size: 20px; line-height: 1;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; flex-shrink: 0; user-select: none;
+.cl-input {
+  width: 100%; background: var(--surface2);
+  border: 1.5px solid var(--border); border-radius: 6px;
+  color: var(--text); font-family: var(--mono);
+  font-size: 22px; font-weight: 500;
+  text-align: center; padding: 8px 4px; outline: none;
+  -webkit-appearance: none; appearance: none;
 }
-.cl-btn:active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); transform: scale(0.9); }
-.cl-val { font-family: var(--mono); font-size: 22px; font-weight: 500; color: var(--text); min-width: 28px; text-align: center; }
+.cl-input:focus { border-color: var(--accent); }
 .cl-sep { font-family: var(--mono); font-size: 18px; color: var(--text3); flex-shrink: 0; }
 .cl-sub { font-family: var(--mono); font-size: 12px; color: var(--text2); flex-shrink: 0; min-width: 36px; text-align: right; }
 .count-line-sub {
@@ -819,44 +819,61 @@ let lineCount = 0;
 
 function addCountLine() {
   lineCount++;
+  const n = lineCount;
   const container = document.getElementById('count-lines');
+
   const div = document.createElement('div');
   div.className = 'count-line';
-  div.id = 'line-' + lineCount;
-  const n = lineCount;
-  div.innerHTML = `
-    <div class="cl-row">
-      <div class="cl-group">
-        <div class="cl-label">Qté/colis</div>
-        <div class="cl-ctrl">
-          <button class="cl-btn" onclick="stepLine('qty',${n},-1)">−</button>
-          <span class="cl-val" id="qty-${n}">1</span>
-          <button class="cl-btn" onclick="stepLine('qty',${n},1)">+</button>
-        </div>
-      </div>
-      <div class="cl-sep">×</div>
-      <div class="cl-group">
-        <div class="cl-label">Nb colis</div>
-        <div class="cl-ctrl">
-          <button class="cl-btn" onclick="stepLine('nb',${n},-1)">−</button>
-          <span class="cl-val" id="nb-${n}">1</span>
-          <button class="cl-btn" onclick="stepLine('nb',${n},1)">+</button>
-        </div>
-      </div>
-      <div class="cl-sub" id="sub-${n}">= 1</div>
-      <button class="btn-del-line" onclick="removeLine('line-${n}')">×</button>
-    </div>`;
+  div.id = 'line-' + n;
+
+  // Label
+  const lbl = document.createElement('div');
+  lbl.className = 'cl-row';
+
+  // Groupe Qté/colis
+  const gQty = document.createElement('div');
+  gQty.className = 'cl-group';
+  gQty.innerHTML = '<div class="cl-label">Qté / colis</div>';
+  const inQty = document.createElement('input');
+  inQty.type = 'number'; inQty.inputMode = 'numeric';
+  inQty.className = 'cl-input'; inQty.value = '1'; inQty.min = '0';
+  inQty.id = 'qty-' + n;
+  inQty.addEventListener('input', updateTotal);
+  gQty.appendChild(inQty);
+
+  // Séparateur
+  const sep = document.createElement('div');
+  sep.className = 'cl-sep'; sep.textContent = '×';
+
+  // Groupe Nb colis
+  const gNb = document.createElement('div');
+  gNb.className = 'cl-group';
+  gNb.innerHTML = '<div class="cl-label">Nb colis</div>';
+  const inNb = document.createElement('input');
+  inNb.type = 'number'; inNb.inputMode = 'numeric';
+  inNb.className = 'cl-input'; inNb.value = '1'; inNb.min = '0';
+  inNb.id = 'nb-' + n;
+  inNb.addEventListener('input', updateTotal);
+  gNb.appendChild(inNb);
+
+  // Sous-total
+  const sub = document.createElement('div');
+  sub.className = 'cl-sub'; sub.id = 'sub-' + n; sub.textContent = '= 1';
+
+  // Bouton supprimer
+  const del = document.createElement('button');
+  del.className = 'btn-del-line'; del.textContent = '×';
+  del.addEventListener('click', () => removeLine('line-' + n));
+
+  lbl.appendChild(gQty);
+  lbl.appendChild(sep);
+  lbl.appendChild(gNb);
+  lbl.appendChild(sub);
+  lbl.appendChild(del);
+  div.appendChild(lbl);
   container.appendChild(div);
   updateTotal();
-  div.querySelector('.count-line-qty').focus();
-}
-
-function stepLine(type, n, delta) {
-  const el = document.getElementById(type + '-' + n);
-  if (!el) return;
-  const v = Math.max(1, (parseInt(el.textContent) || 1) + delta);
-  el.textContent = v;
-  updateTotal();
+  inQty.focus();
 }
 
 function removeLine(id) {
@@ -881,8 +898,8 @@ function updateTotal() {
   let finalTotal = 0;
   document.querySelectorAll('.count-line').forEach(line => {
     const id = line.id.replace('line-', '');
-    const qty = parseInt(document.getElementById('qty-' + id)?.textContent) || 0;
-    const nb  = parseInt(document.getElementById('nb-'  + id)?.textContent) || 0;
+    const qty = parseInt(document.getElementById('qty-' + id)?.value) || 0;
+    const nb  = parseInt(document.getElementById('nb-'  + id)?.value) || 0;
     const sub = qty * nb;
     const subEl = document.getElementById('sub-' + id);
     if (subEl) subEl.textContent = '= ' + sub;
