@@ -179,7 +179,7 @@ body {
 .article-card.not-found .article-icon svg { color: var(--danger); }
 
 .article-info { flex: 1; min-width: 0; }
-.article-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.article-name { font-size: 14px; font-weight: 500; white-space: normal; word-break: break-word; }
 .article-meta { font-family: var(--mono); font-size: 11px; color: var(--text2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .article-stock { text-align: right; flex-shrink: 0; }
 .article-stock-val { font-family: var(--mono); font-size: 16px; font-weight: 500; }
@@ -452,10 +452,7 @@ const CONFIG = {
         <div class="article-name" id="article-name">Scannez une référence</div>
         <div class="article-meta" id="article-meta">—</div>
       </div>
-      <div class="article-stock">
-        <div class="article-stock-val" id="article-stock">—</div>
-        <div class="article-stock-label">stock actuel</div>
-      </div>
+
     </div>
 
     <div class="divider"></div>
@@ -576,6 +573,7 @@ function init() {
     history.replaceState({ screen: 'main' }, '');
     showToast('Chargement du catalogue…', '');
     loadCatalogue();
+    restoreLogs();
   }
 
   // Bouton retour telephone
@@ -660,7 +658,7 @@ function lookupRef(ref) {
     card.className = 'article-card empty';
     document.getElementById('article-name').textContent = 'Scannez une référence';
     document.getElementById('article-meta').textContent = '—';
-    document.getElementById('article-stock').textContent = '—';
+    
     vBtn.disabled = true; return;
   }
 
@@ -677,13 +675,13 @@ function lookupRef(ref) {
     input.className = 'ref-input found'; card.className = 'article-card found';
     document.getElementById('article-name').textContent = art.libelle || ref;
     document.getElementById('article-meta').textContent = ref;
-    document.getElementById('article-stock').textContent = art.stock !== null ? art.stock : '—';
+    
     vBtn.disabled = false;
   } else {
     input.className = 'ref-input not-found'; card.className = 'article-card not-found';
     document.getElementById('article-name').textContent = 'Référence inconnue';
     document.getElementById('article-meta').textContent = ref + ' · absent du catalogue';
-    document.getElementById('article-stock').textContent = '?';
+    
     currentRef = ref; vBtn.disabled = false;
   }
 }
@@ -711,6 +709,7 @@ async function validate() {
     await fetch(CONFIG.APPS_SCRIPT_URL, { method: "POST", mode: "no-cors", body: form });
     addLog(currentRef, catalogue[currentRef]?.libelle || "?", qty);
     document.getElementById('stat-count').textContent = ++scanCount;
+    saveLogs();
     showToast('✓ Enregistré', 'success');
     resetScan();
   } catch (e) {
@@ -726,7 +725,7 @@ function resetScan() {
   document.getElementById('article-card').className = 'article-card empty';
   document.getElementById('article-name').textContent = 'Scannez une référence';
   document.getElementById('article-meta').textContent = '—';
-  document.getElementById('article-stock').textContent = '—';
+  
   document.getElementById('btn-validate').disabled = true;
   currentRef = null;
 }
@@ -860,6 +859,22 @@ function confirmOCR() {
 function retryOCR() {
   document.getElementById('confirm-overlay').classList.remove('active');
   openCamera();
+}
+
+function saveLogs() {
+  const items = document.getElementById('log-list').innerHTML;
+  sessionStorage.setItem('inv_logs', items);
+  sessionStorage.setItem('inv_count', scanCount);
+}
+
+function restoreLogs() {
+  const logs = sessionStorage.getItem('inv_logs');
+  const count = sessionStorage.getItem('inv_count');
+  if (logs) {
+    document.getElementById('log-list').innerHTML = logs;
+    scanCount = parseInt(count) || 0;
+    document.getElementById('stat-count').textContent = scanCount;
+  }
 }
 
 function confirmQuit() {
