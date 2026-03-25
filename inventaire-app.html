@@ -234,6 +234,76 @@ body {
 .log-qty { font-family: var(--mono); font-size: 13px; font-weight: 500; flex-shrink: 0; }
 .log-time { font-family: var(--mono); font-size: 10px; color: var(--text3); flex-shrink: 0; }
 
+/* Lignes de comptage */
+.btn-add-line {
+  width: 100%; background: var(--surface2); border: 1.5px dashed var(--border);
+  border-radius: var(--r-sm); color: var(--text2);
+  font-family: var(--sans); font-size: 14px; font-weight: 500;
+  padding: 12px; cursor: pointer; transition: all 0.15s;
+}
+.btn-add-line:not(:disabled):active { border-color: var(--accent); color: var(--accent); }
+.btn-add-line:disabled { opacity: 0.25; cursor: not-allowed; }
+
+.count-line {
+  display: flex; gap: 8px; align-items: center; margin-bottom: 8px;
+}
+.count-line-label {
+  font-family: var(--mono); font-size: 11px; color: var(--text3);
+  white-space: nowrap; flex-shrink: 0;
+}
+.count-line-qty {
+  flex: 1; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--r-sm); color: var(--text);
+  font-family: var(--mono); font-size: 20px; font-weight: 500;
+  text-align: center; padding: 8px; outline: none; min-width: 0;
+  transition: border-color 0.2s;
+}
+.count-line-qty:focus { border-color: var(--accent); }
+.count-line-x { font-family: var(--mono); font-size: 14px; color: var(--text3); flex-shrink: 0; }
+.count-line-colis {
+  width: 70px; background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--r-sm); color: var(--text);
+  font-family: var(--mono); font-size: 20px; font-weight: 500;
+  text-align: center; padding: 8px; outline: none;
+  transition: border-color 0.2s;
+}
+.count-line-colis:focus { border-color: var(--accent); }
+.count-line-sub {
+  font-family: var(--mono); font-size: 12px; color: var(--text2);
+  flex-shrink: 0; min-width: 36px; text-align: right;
+}
+.btn-del-line {
+  background: none; border: none; color: var(--text3);
+  font-size: 18px; cursor: pointer; padding: 4px; flex-shrink: 0;
+  line-height: 1;
+}
+.btn-del-line:active { color: var(--danger); }
+
+.total-row {
+  display: flex; gap: 10px;
+}
+.total-box, .mult-box {
+  flex: 1; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 10px 14px;
+}
+.total-label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px; }
+.total-val { font-family: var(--mono); font-size: 24px; font-weight: 500; color: var(--text); }
+.mult-select {
+  width: 100%; background: transparent; border: none; outline: none;
+  color: var(--text); font-family: var(--mono); font-size: 14px;
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2355556a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 0 center;
+  padding-right: 18px;
+}
+.final-row {
+  background: var(--accent-dim2); border: 1px solid var(--accent);
+  border-radius: var(--r-sm); padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.final-label { font-family: var(--mono); font-size: 11px; color: var(--text2); }
+.final-val { font-family: var(--mono); font-size: 28px; font-weight: 500; color: var(--accent); }
+
 /* Spinner */
 .spinner {
   width: 16px; height: 16px; border: 2px solid rgba(5,15,9,0.3);
@@ -406,10 +476,7 @@ const CONFIG = {
         </select>
       </div>
     </div>
-    <div>
-      <div class="field-label">Zone / Secteur <span style="color:var(--text3);font-family:var(--sans);text-transform:none;letter-spacing:0">(optionnel)</span></div>
-      <input type="text" id="zone-input" class="field-input" placeholder="ex: Rayon A, Réserve…">
-    </div>
+
     <button class="btn-primary" id="btn-start" disabled>Commencer l'inventaire</button>
   </div>
 </div>
@@ -564,10 +631,8 @@ function init() {
 
   // Restaurer session si refresh
   const savedUser = sessionStorage.getItem('inv_user');
-  const savedZone = sessionStorage.getItem('inv_zone') || '';
   if (savedUser && CONFIG.USERS.includes(savedUser)) {
     currentUser = savedUser;
-    currentZone = savedZone;
     document.getElementById('display-user').textContent = currentUser;
     showScreen('screen-main');
     history.replaceState({ screen: 'main' }, '');
@@ -591,9 +656,14 @@ function init() {
   document.getElementById('ref-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('qty-input').focus();
   });
-  document.getElementById('btn-minus').addEventListener('click', () => adjustQty(-1));
-  document.getElementById('btn-plus').addEventListener('click', () => adjustQty(1));
   document.getElementById('btn-validate').addEventListener('click', validate);
+  document.getElementById('btn-add-line').addEventListener('click', addCountLine);
+  document.getElementById('mult-select').addEventListener('change', function() {
+    const custom = document.getElementById('mult-custom');
+    custom.style.display = this.value === 'custom' ? 'block' : 'none';
+    updateTotal();
+  });
+  document.getElementById('mult-custom').addEventListener('input', updateTotal);
   document.getElementById('btn-cam').addEventListener('click', openCamera);
   document.getElementById('cam-close').addEventListener('click', closeCamera);
 
@@ -614,10 +684,8 @@ function init() {
 
 async function startSession() {
   currentUser = document.getElementById('user-select').value;
-  currentZone = document.getElementById('zone-input').value.trim();
   document.getElementById('display-user').textContent = currentUser;
   sessionStorage.setItem('inv_user', currentUser);
-  sessionStorage.setItem('inv_zone', currentZone);
   showScreen('screen-main');
   history.pushState({ screen: 'main' }, '');
   showToast('Chargement du catalogue…', '');
@@ -659,7 +727,13 @@ function lookupRef(ref) {
     document.getElementById('article-name').textContent = 'Scannez une référence';
     document.getElementById('article-meta').textContent = '—';
     
-    vBtn.disabled = true; return;
+    vBtn.disabled = true;
+    document.getElementById('count-lines').innerHTML = '';
+    document.getElementById('btn-add-line').disabled = true;
+    document.getElementById('total-display').textContent = '0';
+    document.getElementById('final-display').textContent = '0';
+    lineCount = 0;
+    return;
   }
 
   let art = catalogue[ref];
@@ -686,14 +760,64 @@ function lookupRef(ref) {
   }
 }
 
-function adjustQty(d) {
-  const inp = document.getElementById('qty-input');
-  inp.value = Math.max(0, (parseInt(inp.value) || 0) + d);
+// ── SYSTÈME MULTI-LIGNES ──
+let lineCount = 0;
+
+function addCountLine() {
+  lineCount++;
+  const container = document.getElementById('count-lines');
+  const div = document.createElement('div');
+  div.className = 'count-line';
+  div.id = 'line-' + lineCount;
+  div.innerHTML = `
+    <span class="count-line-label">Colis</span>
+    <input type="number" class="count-line-qty" value="1" min="1" inputmode="numeric" placeholder="qté/colis" oninput="updateTotal()">
+    <span class="count-line-x">×</span>
+    <input type="number" class="count-line-colis" value="1" min="1" inputmode="numeric" placeholder="nb" oninput="updateTotal()">
+    <span class="count-line-sub" id="sub-${lineCount}">= 1</span>
+    <button class="btn-del-line" onclick="removeLine('line-${lineCount}')">×</button>`;
+  container.appendChild(div);
+  updateTotal();
+  div.querySelector('.count-line-qty').focus();
 }
+
+function removeLine(id) {
+  const el = document.getElementById(id);
+  if (el) { el.remove(); updateTotal(); }
+  // Garder au moins une ligne si ref trouvée
+  if (document.getElementById('count-lines').children.length === 0 && currentRef) {
+    addCountLine();
+  }
+}
+
+function getMultiplier() {
+  const sel = document.getElementById('mult-select').value;
+  if (sel === 'custom') return parseInt(document.getElementById('mult-custom').value) || 1;
+  return parseInt(sel) || 1;
+}
+
+function updateTotal() {
+  let total = 0;
+  document.querySelectorAll('.count-line').forEach((line, i) => {
+    const qty = parseInt(line.querySelector('.count-line-qty').value) || 0;
+    const nb  = parseInt(line.querySelector('.count-line-colis').value) || 0;
+    const sub = qty * nb;
+    const subEl = line.querySelectorAll('span')[2];
+    if (subEl) subEl.textContent = '= ' + sub;
+    total += sub;
+  });
+  const mult = getMultiplier();
+  const final = total * mult;
+  document.getElementById('total-display').textContent = total;
+  document.getElementById('final-display').textContent = final;
+  document.getElementById('btn-validate').disabled = !currentRef;
+}
+
+function adjustQty(d) {} // conservé pour compatibilité
 
 async function validate() {
   if (!currentRef) return;
-  const qty = parseInt(document.getElementById('qty-input').value) || 0;
+  const qty = parseInt(document.getElementById('final-display').textContent) || 0;
   const btn = document.getElementById('btn-validate');
   btn.disabled = true; btn.classList.add('loading');
   const payload = {
