@@ -46,8 +46,17 @@ body {
   touch-action: manipulation;
 }
 
-.screen { display: none; flex-direction: column; height: 100dvh; overflow: hidden; }
-.screen.active { display: flex; }
+.screen { display: none; flex-direction: column; overflow: hidden; }
+.screen.active { display: flex; height: 100dvh; }
+
+#screen-main.active {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+#screen-main .topbar { position: sticky; top: 0; z-index: 10; }
+#screen-main .log-section { overflow: visible; min-height: 200px; }
 
 /* ── CONNEXION ── */
 #screen-config {
@@ -593,7 +602,7 @@ function init() {
   document.getElementById('btn-start').addEventListener('click', startSession);
   document.getElementById('ref-input').addEventListener('input', e => {
     clearTimeout(window._rd);
-    window._rd = setTimeout(() => lookupRef(e.target.value.trim().toUpperCase()), 280);
+    window._rd = setTimeout(() => lookupRef(e.target.value.replace(/[^A-Z0-9]/gi, '').toUpperCase()), 280);
   });
   document.getElementById('ref-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('qty-input').focus();
@@ -628,7 +637,7 @@ async function loadCatalogue() {
     const text = await res.text();
     const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
     json.table.rows.forEach(row => {
-      const ref = (row.c[CONFIG.COL_REF]?.v ?? "").toString().trim().toUpperCase();
+      const ref = (row.c[CONFIG.COL_REF]?.v ?? "").toString().replace(/[^A-Z0-9]/gi, '').toUpperCase();
       const libelle = (row.c[CONFIG.COL_LIBELLE]?.v ?? "").toString().trim();
       const stock = row.c[CONFIG.COL_STOCK]?.v ?? null;
       if (ref) catalogue[ref] = { libelle, stock };
