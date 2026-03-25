@@ -525,11 +525,42 @@ const CONFIG = {
     <div class="divider"></div>
 
     <div class="qty-section">
-      <div class="qty-row">
-        <button class="btn-qty" id="btn-minus">−</button>
-        <input type="number" id="qty-input" class="qty-input" value="0" min="0" inputmode="numeric">
-        <button class="btn-qty" id="btn-plus">+</button>
+
+      <div id="count-lines"></div>
+
+      <button class="btn-add-line" id="btn-add-line" disabled>+ Ajouter une ligne</button>
+
+      <div class="total-row">
+        <div class="total-box">
+          <div class="total-label">Total brut</div>
+          <div class="total-val" id="total-display">0</div>
+        </div>
+        <div class="mult-box">
+          <div class="total-label">Unité de comptage</div>
+          <select id="mult-select" class="mult-select">
+            <option value="1">× 1 — unité</option>
+            <option value="2">× 2 — paire</option>
+            <option value="3">× 3 — lot de 3</option>
+            <option value="4">× 4 — lot de 4</option>
+            <option value="5">× 5 — lot de 5</option>
+            <option value="6">× 6 — lot de 6</option>
+            <option value="10">× 10 — lot de 10</option>
+            <option value="12">× 12 — douzaine</option>
+            <option value="24">× 24 — carton 24</option>
+            <option value="custom">Autre…</option>
+          </select>
+        </div>
       </div>
+
+      <input type="number" id="mult-custom" class="field-input"
+             placeholder="Multiplicateur personnalisé"
+             style="display:none;" inputmode="numeric" min="1">
+
+      <div class="final-row">
+        <div class="final-label">Quantité finale envoyée</div>
+        <div class="final-val" id="final-display">0</div>
+      </div>
+
       <button class="btn-validate" id="btn-validate" disabled>
         <div class="spinner"></div>
         <span class="btn-text">Valider</span>
@@ -654,7 +685,7 @@ function init() {
     window._rd = setTimeout(() => lookupRef(e.target.value.trim().toUpperCase()), 280);
   });
   document.getElementById('ref-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('qty-input').focus();
+    if (e.key === 'Enter') { const l = document.querySelector('.count-line-qty'); if(l) l.focus(); }
   });
   document.getElementById('btn-validate').addEventListener('click', validate);
   document.getElementById('btn-add-line').addEventListener('click', addCountLine);
@@ -845,7 +876,6 @@ async function validate() {
 function resetScan() {
   document.getElementById('ref-input').value = '';
   document.getElementById('ref-input').className = 'ref-input';
-  document.getElementById('qty-input').value = 0;
   document.getElementById('article-card').className = 'article-card empty';
   document.getElementById('article-name').textContent = 'Scannez une référence';
   document.getElementById('article-meta').textContent = '—';
