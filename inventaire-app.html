@@ -5,593 +5,454 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d0d0f">
 <title>Inventaire</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
 
-  :root {
-    --bg: #0d0d0f;
-    --surface: #16161a;
-    --surface2: #1e1e24;
-    --border: #2a2a32;
-    --accent: #00e5a0;
-    --accent-dim: rgba(0,229,160,0.12);
-    --accent-dim2: rgba(0,229,160,0.06);
-    --warn: #ff9f43;
-    --warn-dim: rgba(255,159,67,0.12);
-    --danger: #ff6b6b;
-    --danger-dim: rgba(255,107,107,0.12);
-    --text: #f0f0f4;
-    --text2: #8888a0;
-    --text3: #55556a;
-    --mono: 'DM Mono', monospace;
-    --sans: 'DM Sans', sans-serif;
-    --r: 14px;
-    --r-sm: 8px;
-  }
+:root {
+  --bg: #0d0d0f;
+  --surface: #16161a;
+  --surface2: #1e1e24;
+  --border: #2a2a32;
+  --accent: #00e5a0;
+  --accent-dim: rgba(0,229,160,0.12);
+  --accent-dim2: rgba(0,229,160,0.06);
+  --warn: #ff9f43;
+  --warn-dim: rgba(255,159,67,0.12);
+  --danger: #ff6b6b;
+  --danger-dim: rgba(255,107,107,0.12);
+  --text: #f0f0f4;
+  --text2: #8888a0;
+  --text3: #55556a;
+  --mono: 'DM Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+  --r: 14px;
+  --r-sm: 10px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 
-  body {
-    font-family: var(--sans);
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  touch-action: manipulation;
+}
 
-  /* SCREENS */
-  .screen { display: none; flex-direction: column; min-height: 100dvh; }
-  .screen.active { display: flex; }
+.screen { display: none; flex-direction: column; height: 100dvh; overflow: hidden; }
+.screen.active { display: flex; }
 
-  /* ── CONFIG SCREEN ── */
-  #screen-config {
-    align-items: center;
-    justify-content: center;
-    padding: 32px 24px;
-    gap: 0;
-    background: var(--bg);
-  }
+/* ── CONNEXION ── */
+#screen-config {
+  align-items: center;
+  justify-content: center;
+  padding: calc(24px + var(--safe-top)) 24px calc(24px + var(--safe-bottom));
+}
 
-  .config-logo {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin-bottom: 48px;
-    opacity: 0.8;
-  }
+.config-logo {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 40px;
+  opacity: 0.7;
+}
+.config-title {
+  font-size: clamp(24px, 7vw, 32px);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+  text-align: center;
+}
+.config-sub { font-size: 14px; color: var(--text2); margin-bottom: 32px; text-align: center; }
 
-  .config-title {
-    font-size: 28px;
-    font-weight: 300;
-    letter-spacing: -0.02em;
-    color: var(--text);
-    margin-bottom: 6px;
-    text-align: center;
-  }
+.config-card {
+  width: 100%; max-width: 400px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 24px;
+  display: flex; flex-direction: column; gap: 18px;
+}
 
-  .config-sub {
-    font-size: 14px;
-    color: var(--text2);
-    margin-bottom: 40px;
-    text-align: center;
-  }
+.field-label {
+  font-size: 10px; font-family: var(--mono);
+  letter-spacing: 0.14em; color: var(--text2);
+  text-transform: uppercase; margin-bottom: 8px;
+}
 
-  .config-card {
-    width: 100%;
-    max-width: 380px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--r);
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
+.field-select, .field-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 16px;
+  padding: 14px 16px;
+  appearance: none; -webkit-appearance: none;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.field-select:focus, .field-input:focus { border-color: var(--accent); }
+.select-wrap { position: relative; }
+.select-wrap::after {
+  content: ''; position: absolute;
+  right: 16px; top: 50%; transform: translateY(-50%);
+  width: 0; height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--text2);
+  pointer-events: none;
+}
 
-  .field-label {
-    font-size: 11px;
-    font-family: var(--mono);
-    letter-spacing: 0.12em;
-    color: var(--text2);
-    text-transform: uppercase;
-    margin-bottom: 8px;
-  }
+.btn-primary {
+  width: 100%; background: var(--accent); color: #050f09;
+  border: none; border-radius: var(--r-sm);
+  font-family: var(--sans); font-size: 16px; font-weight: 600;
+  padding: 16px; cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.btn-primary:active { opacity: 0.82; transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.25; cursor: not-allowed; transform: none; }
 
-  .field-select, .field-input {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
-    color: var(--text);
-    font-family: var(--sans);
-    font-size: 15px;
-    padding: 12px 14px;
-    appearance: none;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .field-select:focus, .field-input:focus { border-color: var(--accent); }
+/* ── PRINCIPAL ── */
+#screen-main { display: none; flex-direction: column; height: 100dvh; overflow: hidden; }
+#screen-main.active { display: flex; }
 
-  .select-wrap { position: relative; }
-  .select-wrap::after {
-    content: '';
-    position: absolute;
-    right: 14px; top: 50%;
-    transform: translateY(-50%);
-    width: 0; height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid var(--text2);
-    pointer-events: none;
-  }
+.topbar {
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: calc(12px + var(--safe-top)) 16px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.topbar-user { display: flex; align-items: center; gap: 8px; }
+.user-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 6px var(--accent); flex-shrink: 0;
+}
+.user-name { font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: 0.06em; }
+.stat-pill {
+  font-family: var(--mono); font-size: 11px; color: var(--text2);
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 10px; white-space: nowrap;
+}
+.stat-pill span { color: var(--text); }
 
-  .btn-primary {
-    width: 100%;
-    background: var(--accent);
-    color: #050f09;
-    border: none;
-    border-radius: var(--r-sm);
-    font-family: var(--sans);
-    font-size: 15px;
-    font-weight: 600;
-    padding: 14px;
-    cursor: pointer;
-    transition: opacity 0.15s, transform 0.1s;
-    letter-spacing: 0.01em;
-  }
-  .btn-primary:active { opacity: 0.85; transform: scale(0.98); }
-  .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; }
+.scan-zone {
+  flex-shrink: 0;
+  padding: 14px 16px 10px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.scan-label {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.18em; color: var(--text3); text-transform: uppercase;
+}
+.scan-input-row { display: flex; gap: 8px; align-items: stretch; }
 
-  /* ── MAIN SCAN SCREEN ── */
-  #screen-main {
-    flex-direction: column;
-    background: var(--bg);
-  }
+.ref-input {
+  flex: 1; min-width: 0;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--r-sm); color: var(--text);
+  font-family: var(--mono); font-size: clamp(18px, 5vw, 24px);
+  font-weight: 500; letter-spacing: 0.06em;
+  padding: 12px 14px; outline: none;
+  transition: border-color 0.2s; text-transform: uppercase;
+}
+.ref-input::placeholder { color: var(--text3); font-size: 14px; letter-spacing: 0.02em; font-weight: 400; }
+.ref-input:focus { border-color: var(--accent); }
+.ref-input.found { border-color: var(--accent); }
+.ref-input.not-found { border-color: var(--danger); }
 
-  .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    flex-shrink: 0;
-  }
+.btn-cam {
+  background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: var(--r-sm); color: var(--text2);
+  width: 52px; min-width: 52px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.15s;
+}
+.btn-cam:active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.btn-cam svg { width: 20px; height: 20px; }
 
-  .topbar-user {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+.article-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 12px 14px;
+  display: flex; align-items: center; gap: 10px;
+  transition: all 0.2s; min-height: 58px; flex-shrink: 0;
+}
+.article-card.found { border-color: var(--accent); background: var(--accent-dim2); }
+.article-card.not-found { border-color: var(--danger); background: var(--danger-dim); }
+.article-card.empty { opacity: 0.35; }
 
-  .user-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent);
-  }
+.article-icon {
+  width: 32px; height: 32px; min-width: 32px;
+  border-radius: 7px; background: var(--accent-dim);
+  display: flex; align-items: center; justify-content: center;
+}
+.article-icon svg { width: 16px; height: 16px; color: var(--accent); }
+.article-card.not-found .article-icon { background: var(--danger-dim); }
+.article-card.not-found .article-icon svg { color: var(--danger); }
 
-  .user-name {
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--accent);
-    letter-spacing: 0.08em;
-  }
+.article-info { flex: 1; min-width: 0; }
+.article-name {
+  font-size: 13px; font-weight: 500; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.article-meta {
+  font-family: var(--mono); font-size: 10px; color: var(--text2); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.article-stock { text-align: right; flex-shrink: 0; }
+.article-stock-val { font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--text); }
+.article-stock-label { font-size: 9px; color: var(--text3); margin-top: 1px; }
 
-  .topbar-stats {
-    display: flex;
-    gap: 16px;
-    align-items: center;
-  }
+.divider { height: 1px; background: var(--border); flex-shrink: 0; margin: 0 16px; }
 
-  .stat-pill {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text2);
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 4px 10px;
-  }
-  .stat-pill span { color: var(--text); font-weight: 500; }
+.qty-section {
+  flex-shrink: 0;
+  padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.qty-row { display: flex; gap: 8px; align-items: center; }
 
-  /* Scan zone */
-  .scan-zone {
-    flex-shrink: 0;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
+.btn-qty {
+  width: 52px; height: 52px; min-width: 52px;
+  background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: var(--r-sm); color: var(--text);
+  font-size: 26px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; user-select: none; transition: all 0.1s;
+}
+.btn-qty:active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); transform: scale(0.92); }
 
-  .scan-label {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    color: var(--text3);
-    text-transform: uppercase;
-  }
+.qty-input {
+  flex: 1;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--r-sm); color: var(--text);
+  font-family: var(--mono); font-size: clamp(28px, 8vw, 36px);
+  font-weight: 500; text-align: center;
+  padding: 10px; outline: none;
+  transition: border-color 0.2s; height: 52px;
+}
+.qty-input:focus { border-color: var(--accent); }
 
-  .scan-input-row {
-    display: flex;
-    gap: 10px;
-    align-items: stretch;
-  }
+.btn-validate {
+  width: 100%; background: var(--accent); color: #050f09;
+  border: none; border-radius: var(--r-sm);
+  font-family: var(--sans); font-size: 16px; font-weight: 600;
+  padding: 16px; cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 52px;
+}
+.btn-validate:active { opacity: 0.82; transform: scale(0.98); }
+.btn-validate:disabled { opacity: 0.2; cursor: not-allowed; transform: none; }
 
-  .ref-input {
-    flex: 1;
-    background: var(--surface);
-    border: 1.5px solid var(--border);
-    border-radius: var(--r-sm);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 22px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    padding: 14px 16px;
-    outline: none;
-    transition: border-color 0.2s;
-    text-transform: uppercase;
-  }
-  .ref-input::placeholder { color: var(--text3); font-size: 16px; letter-spacing: 0.04em; }
-  .ref-input:focus { border-color: var(--accent); }
-  .ref-input.found { border-color: var(--accent); }
-  .ref-input.not-found { border-color: var(--danger); }
+.log-section {
+  flex: 1; overflow-y: auto;
+  padding: 12px 16px calc(16px + var(--safe-bottom));
+  -webkit-overflow-scrolling: touch;
+}
+.log-header {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.18em; color: var(--text3);
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.log-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 9px 12px;
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 6px; animation: slideIn 0.2s ease;
+}
+@keyframes slideIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+.log-ref { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--accent); flex-shrink: 0; }
+.log-name { font-size: 12px; color: var(--text2); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log-qty { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--text); flex-shrink: 0; }
+.log-time { font-family: var(--mono); font-size: 10px; color: var(--text3); flex-shrink: 0; }
 
-  .btn-cam {
-    background: var(--surface2);
-    border: 1.5px solid var(--border);
-    border-radius: var(--r-sm);
-    color: var(--text2);
-    width: 56px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    flex-shrink: 0;
-  }
-  .btn-cam:active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-  .btn-cam svg { width: 22px; height: 22px; }
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(5,15,9,0.3); border-top-color: #050f09;
+  border-radius: 50%; animation: spin 0.6s linear infinite; display: none;
+}
+.loading .spinner { display: block; }
+.loading .btn-text { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-  /* Article info card */
-  .article-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--r);
-    padding: 16px;
-    min-height: 64px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    transition: all 0.2s;
-    flex-shrink: 0;
-  }
-  .article-card.found { border-color: var(--accent); background: var(--accent-dim2); }
-  .article-card.not-found { border-color: var(--danger); background: var(--danger-dim); }
-  .article-card.empty { opacity: 0.4; }
+.toast {
+  position: fixed;
+  bottom: calc(20px + var(--safe-bottom)); left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 40px; padding: 11px 20px;
+  font-size: 14px; color: var(--text);
+  white-space: nowrap;
+  transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1);
+  z-index: 300; pointer-events: none;
+  max-width: calc(100vw - 40px);
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.success { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.toast.error { background: var(--danger-dim); border-color: var(--danger); color: var(--danger); }
+.toast.warn { background: var(--warn-dim); border-color: var(--warn); color: var(--warn); }
 
-  .article-icon {
-    width: 36px; height: 36px;
-    border-radius: 8px;
-    background: var(--accent-dim);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .article-icon svg { width: 18px; height: 18px; color: var(--accent); }
-  .article-card.not-found .article-icon { background: var(--danger-dim); }
-  .article-card.not-found .article-icon svg { color: var(--danger); }
+/* ── CAMÉRA ── */
+.cam-overlay {
+  display: none; position: fixed; inset: 0;
+  background: #000; z-index: 200; flex-direction: column;
+}
+.cam-overlay.active { display: flex; }
+#cam-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+#cam-canvas { display: none; }
 
-  .article-info { flex: 1; min-width: 0; }
-  .article-name {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .article-meta {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text2);
-    margin-top: 3px;
-  }
-  .article-stock {
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--text2);
-    text-align: right;
-    flex-shrink: 0;
-  }
-  .article-stock-label { font-size: 10px; color: var(--text3); }
+.cam-ui {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 0;
+}
+.cam-viewfinder { width: min(280px, 80vw); height: 72px; position: relative; }
+.cam-viewfinder-inner {
+  position: absolute; inset: 0;
+  border: 2px solid var(--accent); border-radius: 10px;
+  box-shadow: 0 0 0 4000px rgba(0,0,0,0.6);
+}
+.cam-viewfinder-inner::before,
+.cam-viewfinder-inner::after {
+  content: ''; position: absolute;
+  width: 18px; height: 18px; border-color: #fff; border-style: solid;
+}
+.cam-viewfinder-inner::before { top:-2px; left:-2px; border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
+.cam-viewfinder-inner::after  { bottom:-2px; right:-2px; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
+.cam-scanline {
+  position: absolute; left: 4px; right: 4px; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: scanline 1.8s ease-in-out infinite; opacity: 0.8;
+}
+@keyframes scanline {
+  0%   { top:10%; opacity:0; } 20% { opacity:1; }
+  80%  { opacity:1; } 100% { top:90%; opacity:0; }
+}
+.cam-hint {
+  margin-top: 20px;
+  font-family: var(--mono); font-size: 12px;
+  letter-spacing: 0.1em; color: rgba(255,255,255,0.55);
+  text-align: center; padding: 0 20px;
+}
+.cam-scan-btn {
+  position: absolute;
+  bottom: calc(48px + var(--safe-bottom)); left: 50%;
+  transform: translateX(-50%);
+  width: 72px; height: 72px; border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: 2px solid rgba(255,255,255,0.25);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.15s; touch-action: none;
+}
+.cam-scan-btn.scanning { background: var(--accent); border-color: var(--accent); transform: translateX(-50%) scale(0.93); }
+.cam-scan-btn svg { width: 28px; height: 28px; color: #fff; }
+.cam-scan-btn.scanning svg { color: #050f09; }
+.cam-close {
+  position: absolute; top: calc(16px + var(--safe-top)); right: 16px;
+  background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 50%; width: 40px; height: 40px;
+  color: #fff; font-size: 18px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10;
+}
+.cam-status {
+  position: absolute; top: calc(16px + var(--safe-top)); left: 16px;
+  font-family: var(--mono); font-size: 11px;
+  color: rgba(255,255,255,0.5); background: rgba(0,0,0,0.4);
+  padding: 6px 10px; border-radius: 20px; letter-spacing: 0.08em;
+}
+.cam-status.ready { color: var(--accent); }
 
-  /* Qty section */
-  .qty-section {
-    padding: 0 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    flex-shrink: 0;
-  }
-
-  .qty-row {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-  }
-
-  .btn-qty {
-    width: 52px; height: 52px;
-    background: var(--surface2);
-    border: 1.5px solid var(--border);
-    border-radius: var(--r-sm);
-    color: var(--text);
-    font-size: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    user-select: none;
-    transition: all 0.1s;
-    flex-shrink: 0;
-  }
-  .btn-qty:active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); transform: scale(0.93); }
-
-  .qty-input {
-    flex: 1;
-    background: var(--surface);
-    border: 1.5px solid var(--border);
-    border-radius: var(--r-sm);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 32px;
-    font-weight: 500;
-    text-align: center;
-    padding: 10px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .qty-input:focus { border-color: var(--accent); }
-
-  .btn-validate {
-    width: 100%;
-    background: var(--accent);
-    color: #050f09;
-    border: none;
-    border-radius: var(--r-sm);
-    font-family: var(--sans);
-    font-size: 16px;
-    font-weight: 600;
-    padding: 16px;
-    cursor: pointer;
-    transition: opacity 0.15s, transform 0.1s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-  .btn-validate:active { opacity: 0.85; transform: scale(0.98); }
-  .btn-validate:disabled { opacity: 0.25; cursor: not-allowed; transform: none; }
-  .btn-validate.loading { opacity: 0.6; }
-
-  /* Log feed */
-  .log-section {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .log-header {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    color: var(--text3);
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
-
-  .log-item {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
-    padding: 10px 14px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    animation: slideIn 0.25s ease;
-  }
-
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(-8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .log-ref {
-    font-family: var(--mono);
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--accent);
-    flex-shrink: 0;
-  }
-  .log-name {
-    font-size: 12px;
-    color: var(--text2);
-    flex: 1;
-    min-width: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .log-qty {
-    font-family: var(--mono);
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text);
-    flex-shrink: 0;
-  }
-  .log-time {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--text3);
-    flex-shrink: 0;
-  }
-
-  /* Toast */
-  .toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 40px;
-    padding: 12px 20px;
-    font-size: 14px;
-    color: var(--text);
-    font-family: var(--sans);
-    white-space: nowrap;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    z-index: 100;
-    pointer-events: none;
-  }
-  .toast.show { transform: translateX(-50%) translateY(0); }
-  .toast.success { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-  .toast.error { background: var(--danger-dim); border-color: var(--danger); color: var(--danger); }
-  .toast.warn { background: var(--warn-dim); border-color: var(--warn); color: var(--warn); }
-
-  /* Camera overlay */
-  .cam-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: #000;
-    z-index: 200;
-    flex-direction: column;
-  }
-  .cam-overlay.active { display: flex; }
-  .cam-overlay video { flex: 1; object-fit: cover; width: 100%; }
-  .cam-overlay canvas { display: none; }
-
-  .cam-ui {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-  }
-
-  .cam-frame {
-    width: 260px; height: 80px;
-    border: 2px solid var(--accent);
-    border-radius: 10px;
-    box-shadow: 0 0 0 4000px rgba(0,0,0,0.55);
-    position: relative;
-  }
-  .cam-frame::before, .cam-frame::after {
-    content: '';
-    position: absolute;
-    width: 20px; height: 20px;
-    border-color: var(--accent);
-    border-style: solid;
-  }
-  .cam-frame::before { top: -2px; left: -2px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
-  .cam-frame::after  { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
-
-  .cam-hint {
-    margin-top: 20px;
-    font-family: var(--mono);
-    font-size: 12px;
-    letter-spacing: 0.1em;
-    color: rgba(255,255,255,0.6);
-  }
-
-  .cam-close {
-    position: absolute;
-    top: 48px; right: 20px;
-    background: rgba(255,255,255,0.1);
-    border: none;
-    border-radius: 50%;
-    width: 44px; height: 44px;
-    color: #fff;
-    font-size: 20px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    pointer-events: all;
-  }
-
-  /* Spinner */
-  .spinner {
-    width: 16px; height: 16px;
-    border: 2px solid rgba(5,15,9,0.3);
-    border-top-color: #050f09;
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-    display: none;
-  }
-  .loading .spinner { display: block; }
-  .loading .btn-text { display: none; }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .divider {
-    height: 1px;
-    background: var(--border);
-    margin: 4px 0;
-  }
+/* ── MODAL CONFIRMATION ── */
+.confirm-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75); z-index: 250;
+  align-items: flex-end; justify-content: center;
+}
+.confirm-overlay.active { display: flex; }
+.confirm-sheet {
+  width: 100%; max-width: 480px;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid var(--border);
+  padding: 20px 20px calc(20px + var(--safe-bottom));
+  animation: slideUp 0.3s cubic-bezier(0.34,1.4,0.64,1);
+}
+@keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
+.confirm-handle {
+  width: 36px; height: 4px; background: var(--border);
+  border-radius: 2px; margin: 0 auto 18px;
+}
+.confirm-title {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.16em; color: var(--text3);
+  text-transform: uppercase; margin-bottom: 12px;
+}
+.confirm-photo {
+  width: 100%; height: 90px; object-fit: cover;
+  border-radius: var(--r-sm); border: 1px solid var(--border);
+  margin-bottom: 14px; background: var(--surface2);
+}
+.confirm-ref-box {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 14px 16px; margin-bottom: 16px;
+}
+.confirm-ref-label {
+  font-family: var(--mono); font-size: 10px; color: var(--text3);
+  letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px;
+}
+.confirm-ref-edit {
+  width: 100%; background: transparent; border: none; outline: none;
+  font-family: var(--mono); font-size: clamp(22px, 6vw, 28px);
+  font-weight: 500; color: var(--text); letter-spacing: 0.08em;
+  text-transform: uppercase; caret-color: var(--accent);
+}
+.confirm-btns { display: flex; gap: 10px; }
+.btn-retry {
+  flex: 1; background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: var(--r-sm); color: var(--text2);
+  font-family: var(--sans); font-size: 15px; font-weight: 500;
+  padding: 14px; cursor: pointer; transition: all 0.15s;
+}
+.btn-retry:active { border-color: var(--text2); color: var(--text); }
+.btn-confirm {
+  flex: 2; background: var(--accent); border: none;
+  border-radius: var(--r-sm); color: #050f09;
+  font-family: var(--sans); font-size: 15px; font-weight: 600;
+  padding: 14px; cursor: pointer; transition: all 0.15s;
+}
+.btn-confirm:active { opacity: 0.82; transform: scale(0.98); }
 </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════
-     CONFIGURATION — À MODIFIER AVANT DÉPLOIEMENT
-     ══════════════════════════════════════════ -->
 <script>
 const CONFIG = {
-  // ⬇ Coller ici l'ID du Google Spreadsheet (dans l'URL sheets.google.com/d/XXXX/edit)
   SHEET_ID: "1dq0SrQOoXaBBRHVM2yB4SPk1LtKT-6iQrQZwA6ELtZo",
-
-  // ⬇ Nom de l'onglet contenant le catalogue (refs + libellés + stock avant)
-  SHEET_CATALOGUE: "Catalogue",
-
-  // ⬇ Nom de l'onglet où écrire les scans
-  SHEET_INVENTAIRE: "Inventaire",
-
-  // ⬇ URL du Google Apps Script déployé (Web App)
+  SHEET_CATALOGUE: "Inventaire V1",
   APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyWlGqd9pOb2PzdixN89Ka_eXhw45YqVa-T2gvdrPTFxaGcaERbMmMC-lEP1EQBAnUI5g/exec",
-
-  // ⬇ Liste des utilisateurs (prénoms affichés dans le menu)
-  USERS: [
-    "Thomas", "Jessica", "Sebastien", "Etienne"
-  ],
-
-  // ⬇ Colonnes du catalogue (index 0 = col A)
-  COL_REF: 0,       // Colonne A : Référence
-  COL_LIBELLE: 1,   // Colonne B : Libellé
-  COL_STOCK: 2,     // Colonne C : Stock avant inventaire
+  USERS: ["Thomas", "Jessica", "Sebastien", "Etienne"],
+  COL_REF: 0, COL_LIBELLE: 1, COL_STOCK: 2,
 };
 </script>
 
-<!-- ══════════════════════════════════════════
-     SCREEN : CONNEXION
-     ══════════════════════════════════════════ -->
+<!-- CONNEXION -->
 <div id="screen-config" class="screen active">
-  <div class="config-logo">Inventaire · v1.0</div>
+  <div class="config-logo">Inventaire · v2.0</div>
   <h1 class="config-title">Bienvenue</h1>
   <p class="config-sub">Sélectionnez votre nom pour commencer</p>
-
   <div class="config-card">
     <div>
       <div class="field-label">Utilisateur</div>
@@ -601,49 +462,37 @@ const CONFIG = {
         </select>
       </div>
     </div>
-
     <div>
-      <div class="field-label">Zone / Secteur <span style="color:var(--text3)">(optionnel)</span></div>
+      <div class="field-label">Zone / Secteur <span style="color:var(--text3);font-family:var(--sans);text-transform:none;letter-spacing:0">(optionnel)</span></div>
       <input type="text" id="zone-input" class="field-input" placeholder="ex: Rayon A, Réserve…">
     </div>
-
-    <button class="btn-primary" id="btn-start" disabled>
-      Commencer l'inventaire
-    </button>
+    <button class="btn-primary" id="btn-start" disabled>Commencer l'inventaire</button>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     SCREEN : SCAN PRINCIPAL
-     ══════════════════════════════════════════ -->
+<!-- PRINCIPAL -->
 <div id="screen-main" class="screen">
-
   <div class="topbar">
     <div class="topbar-user">
       <div class="user-dot"></div>
       <span class="user-name" id="display-user">—</span>
     </div>
-    <div class="topbar-stats">
-      <div class="stat-pill">Scannés : <span id="stat-count">0</span></div>
-      <div class="stat-pill" id="stat-zone-pill" style="display:none">Zone : <span id="stat-zone">—</span></div>
-    </div>
+    <div class="stat-pill"><span id="stat-count">0</span> scannés</div>
   </div>
 
-  <!-- Saisie référence -->
   <div class="scan-zone">
     <div class="scan-label">Référence article</div>
     <div class="scan-input-row">
-      <input type="text" id="ref-input" class="ref-input" placeholder="Ex: 172055 ou 2G6417A"
-             autocomplete="off" autocorrect="off" spellcheck="false">
-      <button class="btn-cam" id="btn-cam" title="Scanner avec la caméra">
+      <input type="text" id="ref-input" class="ref-input"
+             placeholder="172055 ou 2G6417A"
+             autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+      <button class="btn-cam" id="btn-cam">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
           <circle cx="12" cy="13" r="4"/>
         </svg>
       </button>
     </div>
-
-    <!-- Info article -->
     <div class="article-card empty" id="article-card">
       <div class="article-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -656,19 +505,18 @@ const CONFIG = {
         <div class="article-meta" id="article-meta">—</div>
       </div>
       <div class="article-stock">
-        <div class="article-stock-label">Stock actuel</div>
-        <div id="article-stock">—</div>
+        <div class="article-stock-val" id="article-stock">—</div>
+        <div class="article-stock-label">stock actuel</div>
       </div>
     </div>
   </div>
 
   <div class="divider"></div>
 
-  <!-- Quantité -->
   <div class="qty-section">
     <div class="qty-row">
       <button class="btn-qty" id="btn-minus">−</button>
-      <input type="number" id="qty-input" class="qty-input" value="0" min="0">
+      <input type="number" id="qty-input" class="qty-input" value="0" min="0" inputmode="numeric">
       <button class="btn-qty" id="btn-plus">+</button>
     </div>
     <button class="btn-validate" id="btn-validate" disabled>
@@ -679,63 +527,74 @@ const CONFIG = {
 
   <div class="divider"></div>
 
-  <!-- Log des scans -->
   <div class="log-section">
     <div class="log-header">Scans de cette session</div>
     <div id="log-list"></div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     OVERLAY CAMÉRA (OCR)
-     ══════════════════════════════════════════ -->
+<!-- CAMÉRA -->
 <div class="cam-overlay" id="cam-overlay">
   <video id="cam-video" autoplay playsinline muted></video>
   <canvas id="cam-canvas"></canvas>
   <div class="cam-ui">
-    <div class="cam-frame"></div>
-    <div class="cam-hint">Pointez le numéro de référence</div>
+    <div class="cam-viewfinder">
+      <div class="cam-viewfinder-inner">
+        <div class="cam-scanline"></div>
+      </div>
+    </div>
+    <div class="cam-hint">Appuyez sur le bouton pour scanner</div>
   </div>
+  <div class="cam-status" id="cam-status">Initialisation…</div>
   <button class="cam-close" id="cam-close">✕</button>
+  <button class="cam-scan-btn" id="cam-scan-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+  </button>
 </div>
 
-<!-- Toast -->
+<!-- MODAL CONFIRMATION -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-sheet">
+    <div class="confirm-handle"></div>
+    <div class="confirm-title">Référence détectée — corrigez si besoin</div>
+    <img id="confirm-photo" class="confirm-photo" src="" alt="Capture">
+    <div class="confirm-ref-box">
+      <div class="confirm-ref-label">Référence lue</div>
+      <input type="text" id="confirm-ref-edit" class="confirm-ref-edit"
+             autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+    </div>
+    <div class="confirm-btns">
+      <button class="btn-retry" id="btn-retry">Réessayer</button>
+      <button class="btn-confirm" id="btn-confirm">Confirmer</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
-<!-- Tesseract OCR via CDN -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
 <script>
-// ══════════════════════════════════════════
-// STATE
-// ══════════════════════════════════════════
-let currentUser = "";
-let currentZone = "";
-let catalogue = {};       // { REF: { libelle, stock } }
-let currentRef = null;
-let scanCount = 0;
-let camStream = null;
-let ocrWorker = null;
-let ocrInterval = null;
+let currentUser = "", currentZone = "";
+let catalogue = {}, currentRef = null;
+let scanCount = 0, camStream = null;
+let ocrWorker = null, ocrReady = false, isScanning = false;
 
-// ══════════════════════════════════════════
-// INIT
-// ══════════════════════════════════════════
 function init() {
   const sel = document.getElementById('user-select');
   CONFIG.USERS.forEach(u => {
-    const opt = document.createElement('option');
-    opt.value = u;
-    opt.textContent = u;
-    sel.appendChild(opt);
+    const o = document.createElement('option');
+    o.value = u; o.textContent = u; sel.appendChild(o);
   });
-
   sel.addEventListener('change', () => {
     document.getElementById('btn-start').disabled = !sel.value;
   });
-
   document.getElementById('btn-start').addEventListener('click', startSession);
-  document.getElementById('ref-input').addEventListener('input', onRefInput);
+  document.getElementById('ref-input').addEventListener('input', e => {
+    clearTimeout(window._rd);
+    window._rd = setTimeout(() => lookupRef(e.target.value.trim().toUpperCase()), 280);
+  });
   document.getElementById('ref-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('qty-input').focus();
   });
@@ -744,162 +603,100 @@ function init() {
   document.getElementById('btn-validate').addEventListener('click', validate);
   document.getElementById('btn-cam').addEventListener('click', openCamera);
   document.getElementById('cam-close').addEventListener('click', closeCamera);
+
+  const scanBtn = document.getElementById('cam-scan-btn');
+  scanBtn.addEventListener('pointerdown', e => { e.preventDefault(); triggerOCR(); });
+  scanBtn.addEventListener('touchstart', e => { e.preventDefault(); triggerOCR(); }, { passive: false });
+
+  document.getElementById('btn-confirm').addEventListener('click', confirmOCR);
+  document.getElementById('btn-retry').addEventListener('click', retryOCR);
 }
 
-// ══════════════════════════════════════════
-// SESSION START
-// ══════════════════════════════════════════
 async function startSession() {
   currentUser = document.getElementById('user-select').value;
   currentZone = document.getElementById('zone-input').value.trim();
-
   document.getElementById('display-user').textContent = currentUser;
-  if (currentZone) {
-    document.getElementById('stat-zone').textContent = currentZone;
-    document.getElementById('stat-zone-pill').style.display = '';
-  }
-
   showScreen('screen-main');
-
   showToast('Chargement du catalogue…', '');
   await loadCatalogue();
 }
 
-// ══════════════════════════════════════════
-// CHARGEMENT CATALOGUE DEPUIS GOOGLE SHEETS
-// ══════════════════════════════════════════
 async function loadCatalogue() {
-  // URL publique de lecture (le sheet doit être partagé "Tout le monde peut voir")
   const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(CONFIG.SHEET_CATALOGUE)}`;
-
   try {
     const res = await fetch(url);
     const text = await res.text();
-    // Google renvoie du JSONP — on extrait le JSON brut
     const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
-    const rows = json.table.rows;
-
-    rows.forEach(row => {
+    json.table.rows.forEach(row => {
       const ref = (row.c[CONFIG.COL_REF]?.v ?? "").toString().trim().toUpperCase();
       const libelle = (row.c[CONFIG.COL_LIBELLE]?.v ?? "").toString().trim();
       const stock = row.c[CONFIG.COL_STOCK]?.v ?? null;
       if (ref) catalogue[ref] = { libelle, stock };
     });
-
-    const total = Object.keys(catalogue).length;
-    showToast(`${total} références chargées`, 'success');
-    document.getElementById('stat-count').textContent = `0/${total}`;
+    showToast(`${Object.keys(catalogue).length} références chargées`, 'success');
   } catch (e) {
-    console.error(e);
-    showToast('Erreur de chargement — mode hors-ligne', 'warn');
-    // En cas d'erreur, on continue sans catalogue (saisie manuelle possible)
+    showToast('Catalogue non chargé — saisie manuelle possible', 'warn');
   }
-}
-
-// ══════════════════════════════════════════
-// SAISIE RÉFÉRENCE
-// ══════════════════════════════════════════
-let refDebounce;
-function onRefInput(e) {
-  clearTimeout(refDebounce);
-  refDebounce = setTimeout(() => lookupRef(e.target.value.trim().toUpperCase()), 300);
 }
 
 function lookupRef(ref) {
   currentRef = null;
   const card = document.getElementById('article-card');
   const input = document.getElementById('ref-input');
-  const validateBtn = document.getElementById('btn-validate');
-
+  const vBtn = document.getElementById('btn-validate');
   if (!ref) {
     card.className = 'article-card empty';
     document.getElementById('article-name').textContent = 'Scannez une référence';
     document.getElementById('article-meta').textContent = '—';
     document.getElementById('article-stock').textContent = '—';
-    validateBtn.disabled = true;
-    return;
+    vBtn.disabled = true; return;
   }
-
-  const article = catalogue[ref];
-  if (article) {
+  const art = catalogue[ref];
+  if (art) {
     currentRef = ref;
-    input.className = 'ref-input found';
-    card.className = 'article-card found';
-    document.getElementById('article-name').textContent = article.libelle || ref;
+    input.className = 'ref-input found'; card.className = 'article-card found';
+    document.getElementById('article-name').textContent = art.libelle || ref;
     document.getElementById('article-meta').textContent = ref;
-    document.getElementById('article-stock').textContent = article.stock !== null ? article.stock : '—';
-    validateBtn.disabled = false;
+    document.getElementById('article-stock').textContent = art.stock !== null ? art.stock : '—';
+    vBtn.disabled = false;
   } else {
-    // Référence inconnue — on la note quand même
-    input.className = 'ref-input not-found';
-    card.className = 'article-card not-found';
+    input.className = 'ref-input not-found'; card.className = 'article-card not-found';
     document.getElementById('article-name').textContent = 'Référence inconnue';
-    document.getElementById('article-meta').textContent = ref + ' · non trouvé dans le catalogue';
+    document.getElementById('article-meta').textContent = ref + ' · absent du catalogue';
     document.getElementById('article-stock').textContent = '?';
-    currentRef = ref; // on permet quand même la saisie
-    validateBtn.disabled = false;
-
-    // Changer l'icône
-    card.querySelector('.article-icon svg').innerHTML = `
-      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
-      <line x1="12" y1="16" x2="12.01" y2="16"/>`;
+    currentRef = ref; vBtn.disabled = false;
   }
 }
 
-// ══════════════════════════════════════════
-// QUANTITÉ
-// ══════════════════════════════════════════
-function adjustQty(delta) {
+function adjustQty(d) {
   const inp = document.getElementById('qty-input');
-  const v = Math.max(0, (parseInt(inp.value) || 0) + delta);
-  inp.value = v;
+  inp.value = Math.max(0, (parseInt(inp.value) || 0) + d);
 }
 
-// ══════════════════════════════════════════
-// VALIDATION → ENVOI APPS SCRIPT
-// ══════════════════════════════════════════
 async function validate() {
   if (!currentRef) return;
-
   const qty = parseInt(document.getElementById('qty-input').value) || 0;
   const btn = document.getElementById('btn-validate');
-  btn.disabled = true;
-  btn.classList.add('loading');
-
+  btn.disabled = true; btn.classList.add('loading');
   const payload = {
-    action: "addScan",
-    ref: currentRef,
+    action: "addScan", ref: currentRef,
     libelle: catalogue[currentRef]?.libelle || "",
-    qty: qty,
-    stockBefore: catalogue[currentRef]?.stock ?? null,
-    user: currentUser,
-    zone: currentZone,
+    qty, stockBefore: catalogue[currentRef]?.stock ?? null,
+    user: currentUser, zone: currentZone,
     timestamp: new Date().toISOString()
   };
-
   try {
     const form = new FormData();
     form.append("data", JSON.stringify(payload));
-    await fetch(CONFIG.APPS_SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      body: form
-    });
-
-    // Log local
+    await fetch(CONFIG.APPS_SCRIPT_URL, { method: "POST", mode: "no-cors", body: form });
     addLog(currentRef, catalogue[currentRef]?.libelle || "?", qty);
-    scanCount++;
-    const total = Object.keys(catalogue).length;
-    document.getElementById('stat-count').textContent = total ? `${scanCount}/${total}` : scanCount;
-
+    document.getElementById('stat-count').textContent = ++scanCount;
     showToast('✓ Enregistré', 'success');
     resetScan();
   } catch (e) {
     showToast('Erreur réseau — réessayez', 'error');
   }
-
-  btn.disabled = false;
-  btn.classList.remove('loading');
+  btn.disabled = false; btn.classList.remove('loading');
 }
 
 function resetScan() {
@@ -915,98 +712,121 @@ function resetScan() {
   document.getElementById('ref-input').focus();
 }
 
-// ══════════════════════════════════════════
-// LOG VISUEL
-// ══════════════════════════════════════════
 function addLog(ref, name, qty) {
-  const list = document.getElementById('log-list');
-  const now = new Date();
-  const time = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-
+  const time = new Date().toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
   const item = document.createElement('div');
   item.className = 'log-item';
-  item.innerHTML = `
-    <span class="log-ref">${ref}</span>
-    <span class="log-name">${name}</span>
-    <span class="log-qty">${qty}</span>
-    <span class="log-time">${time}</span>`;
-  list.prepend(item);
+  item.innerHTML = `<span class="log-ref">${ref}</span><span class="log-name">${name}</span><span class="log-qty">${qty}</span><span class="log-time">${time}</span>`;
+  document.getElementById('log-list').prepend(item);
 }
 
-// ══════════════════════════════════════════
-// CAMÉRA & OCR
-// ══════════════════════════════════════════
 async function openCamera() {
   try {
     camStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
     });
-    const video = document.getElementById('cam-video');
-    video.srcObject = camStream;
+    document.getElementById('cam-video').srcObject = camStream;
     document.getElementById('cam-overlay').classList.add('active');
-
-    // Init Tesseract
+    document.getElementById('cam-status').textContent = 'Initialisation OCR…';
+    document.getElementById('cam-status').className = 'cam-status';
     if (!ocrWorker) {
-      ocrWorker = await Tesseract.createWorker('eng', 1, {
-        logger: () => {}
-      });
+      ocrWorker = await Tesseract.createWorker('eng', 1, { logger: () => {} });
       await ocrWorker.setParameters({
         tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-',
         tessedit_pageseg_mode: '7'
       });
     }
-
-    // Boucle OCR toutes les 1.5s
-    ocrInterval = setInterval(runOCR, 1500);
+    ocrReady = true;
+    document.getElementById('cam-status').textContent = 'Prêt — appuyez pour scanner';
+    document.getElementById('cam-status').className = 'cam-status ready';
   } catch (e) {
     showToast('Caméra non disponible', 'error');
   }
 }
 
-async function runOCR() {
+async function triggerOCR() {
+  if (!ocrReady || isScanning) return;
+  isScanning = true;
+  const btn = document.getElementById('cam-scan-btn');
+  btn.classList.add('scanning');
+  document.getElementById('cam-status').textContent = 'Analyse en cours…';
+  document.getElementById('cam-status').className = 'cam-status';
+
   const video = document.getElementById('cam-video');
   const canvas = document.getElementById('cam-canvas');
-  if (video.readyState < 2) return;
+  if (video.readyState < 2) { isScanning = false; btn.classList.remove('scanning'); return; }
 
   const vw = video.videoWidth, vh = video.videoHeight;
-  // Zone centrale (260×80px équivalent)
-  const cropW = Math.round(vw * 0.5), cropH = Math.round(vh * 0.15);
-  const cropX = Math.round((vw - cropW) / 2);
-  const cropY = Math.round((vh - cropH) / 2);
+  const cropW = Math.round(vw * 0.55), cropH = Math.round(vh * 0.18);
+  const cropX = Math.round((vw - cropW) / 2), cropY = Math.round((vh - cropH) / 2);
 
-  canvas.width = cropW;
-  canvas.height = cropH;
+  canvas.width = cropW; canvas.height = cropH;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
-  // Contraste accru
-  ctx.filter = 'contrast(2) brightness(1.1)';
+  // Snapshot pour la preview
+  const preview = document.createElement('canvas');
+  preview.width = cropW; preview.height = cropH;
+  preview.getContext('2d').drawImage(canvas, 0, 0);
+
+  // Amélioration contraste
+  ctx.filter = 'contrast(2.2) brightness(1.15) grayscale(1)';
   ctx.drawImage(canvas, 0, 0);
 
   try {
     const { data: { text } } = await ocrWorker.recognize(canvas);
     const cleaned = text.replace(/\s/g, '').toUpperCase();
-    // Cherche la première séquence qui ressemble à une référence (4+ caractères alphanumériques)
-    const match = cleaned.match(/[A-Z0-9]{4,}/);
+    const match = cleaned.match(/[A-Z0-9]{3,}/);
+    btn.classList.remove('scanning');
     if (match) {
-      const ref = match[0];
-      closeCamera();
-      document.getElementById('ref-input').value = ref;
-      lookupRef(ref);
-      document.getElementById('qty-input').focus();
+      showConfirmModal(match[0], preview.toDataURL('image/jpeg', 0.8));
+    } else {
+      document.getElementById('cam-status').textContent = 'Rien détecté — réessayez';
+      document.getElementById('cam-status').className = 'cam-status';
+      setTimeout(() => {
+        if (ocrReady) {
+          document.getElementById('cam-status').textContent = 'Prêt — appuyez pour scanner';
+          document.getElementById('cam-status').className = 'cam-status ready';
+        }
+      }, 1800);
     }
-  } catch (e) {}
+  } catch(e) {
+    btn.classList.remove('scanning');
+    showToast('Erreur OCR', 'error');
+  }
+  isScanning = false;
 }
 
 function closeCamera() {
-  clearInterval(ocrInterval);
   if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  ocrReady = false; isScanning = false;
   document.getElementById('cam-overlay').classList.remove('active');
+  document.getElementById('cam-scan-btn').classList.remove('scanning');
 }
 
-// ══════════════════════════════════════════
-// UTILITAIRES
-// ══════════════════════════════════════════
+function showConfirmModal(ref, photoUrl) {
+  closeCamera();
+  document.getElementById('confirm-photo').src = photoUrl;
+  document.getElementById('confirm-ref-edit').value = ref;
+  document.getElementById('confirm-overlay').classList.add('active');
+  setTimeout(() => document.getElementById('confirm-ref-edit').select(), 350);
+}
+
+function confirmOCR() {
+  const ref = document.getElementById('confirm-ref-edit').value.trim().toUpperCase();
+  document.getElementById('confirm-overlay').classList.remove('active');
+  if (ref) {
+    document.getElementById('ref-input').value = ref;
+    lookupRef(ref);
+    document.getElementById('qty-input').focus();
+  }
+}
+
+function retryOCR() {
+  document.getElementById('confirm-overlay').classList.remove('active');
+  openCamera();
+}
+
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -1015,8 +835,7 @@ function showScreen(id) {
 let toastTimer;
 function showToast(msg, type = '') {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast' + (type ? ' ' + type : '');
+  t.textContent = msg; t.className = 'toast' + (type ? ' ' + type : '');
   clearTimeout(toastTimer);
   requestAnimationFrame(() => {
     t.classList.add('show');
@@ -1026,58 +845,5 @@ function showToast(msg, type = '') {
 
 init();
 </script>
-
-<!--
-════════════════════════════════════════════════════════
-  GOOGLE APPS SCRIPT À DÉPLOYER (copier dans script.google.com)
-════════════════════════════════════════════════════════
-
-const SHEET_ID = "VOTRE_SHEET_ID";
-const SHEET_INVENTAIRE = "Inventaire";
-
-function doPost(e) {
-  const data = JSON.parse(e.postData.contents);
-
-  if (data.action === "addScan") {
-    const ss = SpreadsheetApp.openById(SHEET_ID);
-    const sheet = ss.getSheetByName(SHEET_INVENTAIRE);
-
-    const dataRange = sheet.getDataRange().getValues();
-    let rowIndex = -1;
-    for (let i = 1; i < dataRange.length; i++) {
-      if (String(dataRange[i][0]).trim().toUpperCase() === data.ref) {
-        rowIndex = i + 1;
-        break;
-      }
-    }
-
-    const stockBefore = data.stockBefore !== null ? data.stockBefore : "";
-    const stockAfter  = data.qty;
-    const delta       = (stockBefore !== "" && stockAfter !== null) ? stockAfter - stockBefore : "";
-
-    if (rowIndex > 0) {
-      sheet.getRange(rowIndex, 4).setValue(stockAfter);
-      sheet.getRange(rowIndex, 5).setValue(delta);
-      sheet.getRange(rowIndex, 6).setValue(data.user);
-      sheet.getRange(rowIndex, 7).setValue(data.timestamp);
-    } else {
-      sheet.appendRow([data.ref, data.libelle || "?", stockBefore, stockAfter, delta, data.user, data.timestamp]);
-    }
-  }
-
-  return ContentService
-    .createTextOutput(JSON.stringify({ ok: true }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-// Colonnes : A: Référence | B: Libellé | C: Stock avant
-// D: Stock après | E: Delta | F: Utilisateur | G: Horodatage
-
-════════════════════════════════════════════════════════
-  STRUCTURE DU SHEET "Catalogue" (à importer depuis l'ERP)
-════════════════════════════════════════════════════════
-  A: Référence | B: Libellé | C: Stock avant inventaire
-════════════════════════════════════════════════════════
--->
 </body>
 </html>
