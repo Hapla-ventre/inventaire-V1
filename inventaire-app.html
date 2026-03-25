@@ -296,6 +296,21 @@ body {
   background-repeat: no-repeat; background-position: right 0 center;
   padding-right: 18px;
 }
+.unite-row {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 12px 14px;
+}
+.unite-label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 10px; }
+.unite-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.unite-btn {
+  flex: 1; background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: var(--r-sm); color: var(--text2);
+  font-family: var(--sans); font-size: 14px; font-weight: 500;
+  padding: 10px 8px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.unite-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.unite-btn:active { transform: scale(0.95); }
+
 .final-row {
   background: var(--accent-dim2); border: 1px solid var(--accent);
   border-radius: var(--r-sm); padding: 12px 16px;
@@ -526,39 +541,39 @@ const CONFIG = {
 
     <div class="qty-section">
 
+      <!-- Lignes qté/colis × nb colis -->
       <div id="count-lines"></div>
-
       <button class="btn-add-line" id="btn-add-line" disabled>+ Ajouter une ligne</button>
 
+      <!-- Total des colis -->
       <div class="total-row">
         <div class="total-box">
-          <div class="total-label">Total brut</div>
+          <div class="total-label">Qté / colis</div>
           <div class="total-val" id="total-display">0</div>
         </div>
-        <div class="mult-box">
-          <div class="total-label">Unité de comptage</div>
-          <select id="mult-select" class="mult-select">
-            <option value="1">× 1 — unité</option>
-            <option value="2">× 2 — paire</option>
-            <option value="3">× 3 — lot de 3</option>
-            <option value="4">× 4 — lot de 4</option>
-            <option value="5">× 5 — lot de 5</option>
-            <option value="6">× 6 — lot de 6</option>
-            <option value="10">× 10 — lot de 10</option>
-            <option value="12">× 12 — douzaine</option>
-            <option value="24">× 24 — carton 24</option>
-            <option value="custom">Autre…</option>
-          </select>
+        <div class="total-box">
+          <div class="total-label">Nb de colis</div>
+          <div class="total-val" id="colis-display">0</div>
         </div>
       </div>
 
-      <input type="number" id="mult-custom" class="field-input"
-             placeholder="Multiplicateur personnalisé"
-             style="display:none;" inputmode="numeric" min="1">
-
+      <!-- Quantité finale -->
       <div class="final-row">
-        <div class="final-label">Quantité finale envoyée</div>
+        <div class="final-label">Quantité totale envoyée</div>
         <div class="final-val" id="final-display">0</div>
+      </div>
+
+      <!-- Unité de comptage -->
+      <div class="unite-row">
+        <div class="unite-label">Unité de comptage</div>
+        <div class="unite-btns" id="unite-btns">
+          <button class="unite-btn active" data-val="1">Unité</button>
+          <button class="unite-btn" data-val="2">Paire</button>
+          <button class="unite-btn" data-val="custom">Lot…</button>
+        </div>
+        <input type="number" id="mult-custom" class="field-input"
+               placeholder="Taille du lot (ex: 6)"
+               style="display:none; margin-top:8px;" inputmode="numeric" min="1">
       </div>
 
       <button class="btn-validate" id="btn-validate" disabled>
@@ -689,10 +704,14 @@ function init() {
   });
   document.getElementById('btn-validate').addEventListener('click', validate);
   document.getElementById('btn-add-line').addEventListener('click', addCountLine);
-  document.getElementById('mult-select').addEventListener('change', function() {
-    const custom = document.getElementById('mult-custom');
-    custom.style.display = this.value === 'custom' ? 'block' : 'none';
-    updateTotal();
+  document.querySelectorAll('.unite-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.unite-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      const custom = document.getElementById('mult-custom');
+      custom.style.display = this.dataset.val === 'custom' ? 'block' : 'none';
+      updateTotal();
+    });
   });
   document.getElementById('mult-custom').addEventListener('input', updateTotal);
   document.getElementById('btn-cam').addEventListener('click', openCamera);
@@ -762,6 +781,7 @@ function lookupRef(ref) {
     document.getElementById('count-lines').innerHTML = '';
     document.getElementById('btn-add-line').disabled = true;
     document.getElementById('total-display').textContent = '0';
+    document.getElementById('colis-display').textContent = '0';
     document.getElementById('final-display').textContent = '0';
     lineCount = 0;
     return;
@@ -822,25 +842,38 @@ function removeLine(id) {
 }
 
 function getMultiplier() {
-  const sel = document.getElementById('mult-select').value;
-  if (sel === 'custom') return parseInt(document.getElementById('mult-custom').value) || 1;
-  return parseInt(sel) || 1;
+  const active = document.querySelector('.unite-btn.active');
+  const val = active ? active.dataset.val : '1';
+  if (val === 'custom') return parseInt(document.getElementById('mult-custom').value) || 1;
+  return parseInt(val) || 1;
 }
 
 function updateTotal() {
-  let total = 0;
-  document.querySelectorAll('.count-line').forEach((line, i) => {
-    const qty = parseInt(line.querySelector('.count-line-qty').value) || 0;
-    const nb  = parseInt(line.querySelector('.count-line-colis').value) || 0;
-    const sub = qty * nb;
+  let totalQty = 0;
+  let totalColis = 0;
+  document.querySelectorAll('.count-line').forEach(line => {
+    const qty  = parseInt(line.querySelector('.count-line-qty').value) || 0;
+    const nb   = parseInt(line.querySelector('.count-line-colis').value) || 0;
+    const sub  = qty * nb;
     const subEl = line.querySelectorAll('span')[2];
     if (subEl) subEl.textContent = '= ' + sub;
-    total += sub;
+    totalQty   += qty;
+    totalColis += nb;
   });
   const mult = getMultiplier();
-  const final = total * mult;
-  document.getElementById('total-display').textContent = total;
-  document.getElementById('final-display').textContent = final;
+  const lines = document.querySelectorAll('.count-line');
+  // Si une seule ligne, total brut = qty * nb; sinon afficher la somme
+  let finalTotal = 0;
+  document.querySelectorAll('.count-line').forEach(line => {
+    const qty = parseInt(line.querySelector('.count-line-qty').value) || 0;
+    const nb  = parseInt(line.querySelector('.count-line-colis').value) || 0;
+    finalTotal += qty * nb;
+  });
+  document.getElementById('total-display').textContent = lines.length === 1
+    ? (parseInt(document.querySelector('.count-line-qty')?.value) || 0)
+    : finalTotal;
+  document.getElementById('colis-display').textContent = totalColis;
+  document.getElementById('final-display').textContent = finalTotal * mult;
   document.getElementById('btn-validate').disabled = !currentRef;
 }
 
