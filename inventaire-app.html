@@ -346,7 +346,7 @@ body {
   color: var(--text3); text-transform: uppercase; margin-bottom: 12px;
 }
 .confirm-photo {
-  width: 100%; height: 90px; object-fit: cover; object-position: center center;
+  width: 100%; height: 90px; object-fit: cover; object-position: center 70%;
   border-radius: var(--r-sm); border: 1px solid var(--border); margin-bottom: 14px;
 }
 .confirm-ref-box {
@@ -720,8 +720,10 @@ async function triggerOCR() {
   if (video.readyState < 2) { isScanning = false; btn.classList.remove('scanning'); return; }
 
   const vw = video.videoWidth, vh = video.videoHeight;
-  const cropW = Math.round(vw * 0.7), cropH = Math.round(vh * 0.28);
-  const cropX = Math.round((vw - cropW) / 2), cropY = Math.round((vh - cropH) / 2);
+  const cropW = Math.round(vw * 0.8), cropH = Math.round(vh * 0.35);
+  const cropX = Math.round((vw - cropW) / 2);
+  // Décaler vers le haut de 8% pour compenser l'UI du viseur
+  const cropY = Math.round((vh - cropH) / 2) - Math.round(vh * 0.08);
 
   canvas.width = cropW; canvas.height = cropH;
   const ctx = canvas.getContext('2d');
@@ -749,7 +751,7 @@ async function triggerOCR() {
         );
         if (word && word.bbox) {
           const b = word.bbox;
-          const pad = 20;
+          const pad = 40;
           const x = Math.max(0, b.x0 - pad);
           const y = Math.max(0, b.y0 - pad);
           const w = Math.min(canvas.width - x, (b.x1 - b.x0) + pad * 2);
