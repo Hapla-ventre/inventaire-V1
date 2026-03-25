@@ -805,6 +805,12 @@ function lookupRef(ref) {
     
     currentRef = ref; vBtn.disabled = false;
   }
+  // Init lignes de comptage
+  document.getElementById('count-lines').innerHTML = '';
+  lineCount = 0;
+  document.getElementById('btn-add-line').disabled = false;
+  addCountLine();
+  updateTotal();
 }
 
 // ── SYSTÈME MULTI-LIGNES ──
