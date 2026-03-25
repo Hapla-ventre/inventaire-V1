@@ -560,7 +560,7 @@ const CONFIG = {
 
       <!-- Total calculé -->
       <div class="final-row">
-        <div class="final-label">Quantité totale envoyée</div>
+        <div class="final-label">Quantité totale</div>
         <div class="final-val" id="final-display">0</div>
       </div>
 
@@ -642,6 +642,20 @@ const CONFIG = {
   </div>
 </div>
 
+<div class="confirm-overlay" id="refresh-overlay">
+  <div class="confirm-sheet">
+    <div class="confirm-handle"></div>
+    <div class="confirm-title">Rafraîchir la page ?</div>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:20px;line-height:1.6;">
+      Les données non validées seront perdues.<br>Les scans déjà envoyés sont bien enregistrés dans Sheets.
+    </p>
+    <div class="confirm-btns">
+      <button class="btn-retry" onclick="cancelRefresh()">Annuler</button>
+      <button class="btn-confirm" style="background:var(--danger);color:#fff;" onclick="doRefresh()">Rafraîchir</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <div class="confirm-overlay" id="quit-overlay">
@@ -654,6 +668,20 @@ const CONFIG = {
     <div class="confirm-btns">
       <button class="btn-retry" onclick="document.getElementById('quit-overlay').classList.remove('active')">Rester</button>
       <button class="btn-confirm" style="background:var(--danger);color:#fff;" onclick="confirmQuit()">Quitter</button>
+    </div>
+  </div>
+</div>
+
+<div class="confirm-overlay" id="refresh-overlay">
+  <div class="confirm-sheet">
+    <div class="confirm-handle"></div>
+    <div class="confirm-title">Rafraîchir la page ?</div>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:20px;line-height:1.6;">
+      Les données non validées seront perdues.<br>Les scans déjà envoyés sont bien enregistrés dans Sheets.
+    </p>
+    <div class="confirm-btns">
+      <button class="btn-retry" onclick="cancelRefresh()">Annuler</button>
+      <button class="btn-confirm" style="background:var(--danger);color:#fff;" onclick="doRefresh()">Rafraîchir</button>
     </div>
   </div>
 </div>
@@ -836,7 +864,7 @@ function addCountLine() {
   // Groupe Qté/colis
   const gQty = document.createElement('div');
   gQty.className = 'cl-group';
-  gQty.innerHTML = '<div class="cl-label">Qté / colis</div>';
+  gQty.innerHTML = '<div class="cl-label">Quantité par colis</div>';
   const inQty = document.createElement('input');
   inQty.type = 'number'; inQty.inputMode = 'numeric';
   inQty.className = 'cl-input'; inQty.value = '1'; inQty.min = '0';
@@ -851,7 +879,7 @@ function addCountLine() {
   // Groupe Nb colis
   const gNb = document.createElement('div');
   gNb.className = 'cl-group';
-  gNb.innerHTML = '<div class="cl-label">Nb colis</div>';
+  gNb.innerHTML = '<div class="cl-label">Nombre de colis</div>';
   const inNb = document.createElement('input');
   inNb.type = 'number'; inNb.inputMode = 'numeric';
   inNb.className = 'cl-input'; inNb.value = '1'; inNb.min = '0';
@@ -922,7 +950,14 @@ async function validate() {
     const lotSize = parseInt(document.getElementById('mult-custom').value);
     if (!lotSize || lotSize < 1) {
       showToast('Renseignez la taille du lot', 'warn');
-      document.getElementById('mult-custom').focus();
+      const mc = document.getElementById('mult-custom');
+      mc.style.borderColor = 'var(--danger)';
+      mc.style.boxShadow = '0 0 0 2px var(--danger-dim)';
+      mc.addEventListener('input', function clearErr() {
+        mc.style.borderColor = ''; mc.style.boxShadow = '';
+        mc.removeEventListener('input', clearErr);
+      });
+      mc.focus();
       btn.disabled = false;
       btn.classList.remove('loading');
       return;
@@ -1127,6 +1162,40 @@ function restoreLogs() {
     document.getElementById('stat-count').textContent = scanCount;
   }
 }
+
+// Intercepter refresh (F5, Ctrl+R, swipe-to-refresh)
+let _refreshPending = false;
+
+function cancelRefresh() {
+  document.getElementById('refresh-overlay').classList.remove('active');
+  _refreshPending = false;
+}
+
+function doRefresh() {
+  _refreshPending = false;
+  sessionStorage.clear();
+  window.location.reload();
+}
+
+// Bloquer le refresh natif sur mobile (swipe) et desktop (F5/Ctrl+R)
+window.addEventListener('keydown', function(e) {
+  if (!document.getElementById('screen-main').classList.contains('active')) return;
+  if (e.key === 'F5' || (e.ctrlKey && e.key === 'r') || (e.metaKey && e.key === 'r')) {
+    e.preventDefault();
+    document.getElementById('refresh-overlay').classList.add('active');
+  }
+});
+
+// Swipe-to-refresh sur mobile (overscroll)
+let _touchStartY = 0;
+window.addEventListener('touchstart', e => { _touchStartY = e.touches[0].clientY; }, { passive: true });
+window.addEventListener('touchmove', e => {
+  if (!document.getElementById('screen-main').classList.contains('active')) return;
+  const dy = e.touches[0].clientY - _touchStartY;
+  if (dy > 80 && window.scrollY === 0) {
+    document.getElementById('refresh-overlay').classList.add('active');
+  }
+}, { passive: true });
 
 function confirmQuit() {
   sessionStorage.clear();
