@@ -533,6 +533,20 @@ const CONFIG = {
 
 <div class="toast" id="toast"></div>
 
+<div class="confirm-overlay" id="quit-overlay">
+  <div class="confirm-sheet">
+    <div class="confirm-handle"></div>
+    <div class="confirm-title">Quitter la session ?</div>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:20px;line-height:1.6;">
+      Vous retournez au choix du profil.<br>Les scans sont bien enregistrés dans Sheets.
+    </p>
+    <div class="confirm-btns">
+      <button class="btn-retry" onclick="document.getElementById('quit-overlay').classList.remove('active')">Rester</button>
+      <button class="btn-confirm" style="background:var(--danger);color:#fff;" onclick="confirmQuit()">Quitter</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
 let currentUser = "", currentZone = "";
@@ -550,6 +564,28 @@ function init() {
     document.getElementById('btn-start').disabled = !sel.value;
   });
   document.getElementById('btn-start').addEventListener('click', startSession);
+
+  // Restaurer session si refresh
+  const savedUser = sessionStorage.getItem('inv_user');
+  const savedZone = sessionStorage.getItem('inv_zone') || '';
+  if (savedUser && CONFIG.USERS.includes(savedUser)) {
+    currentUser = savedUser;
+    currentZone = savedZone;
+    document.getElementById('display-user').textContent = currentUser;
+    showScreen('screen-main');
+    history.replaceState({ screen: 'main' }, '');
+    showToast('Chargement du catalogue…', '');
+    loadCatalogue();
+  }
+
+  // Bouton retour telephone
+  window.addEventListener('popstate', () => {
+    if (document.getElementById('screen-main').classList.contains('active')) {
+      history.pushState({ screen: 'main' }, '');
+      document.getElementById('quit-overlay').classList.add('active');
+    }
+  });
+
   document.getElementById('ref-input').addEventListener('input', e => {
     clearTimeout(window._rd);
     window._rd = setTimeout(() => lookupRef(e.target.value.trim().toUpperCase()), 280);
@@ -582,7 +618,10 @@ async function startSession() {
   currentUser = document.getElementById('user-select').value;
   currentZone = document.getElementById('zone-input').value.trim();
   document.getElementById('display-user').textContent = currentUser;
+  sessionStorage.setItem('inv_user', currentUser);
+  sessionStorage.setItem('inv_zone', currentZone);
   showScreen('screen-main');
+  history.pushState({ screen: 'main' }, '');
   showToast('Chargement du catalogue…', '');
   await loadCatalogue();
 }
@@ -821,6 +860,11 @@ function confirmOCR() {
 function retryOCR() {
   document.getElementById('confirm-overlay').classList.remove('active');
   openCamera();
+}
+
+function confirmQuit() {
+  sessionStorage.clear();
+  window.location.reload();
 }
 
 function showScreen(id) {
