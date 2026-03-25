@@ -188,10 +188,10 @@ body {
 .divider { height: 1px; background: var(--border); }
 
 .qty-section { display: flex; flex-direction: column; gap: 10px; }
-.qty-row { display: flex; gap: 8px; align-items: center; }
+.qty-row { display: flex; gap: 8px; align-items: center; width: 100%; }
 
 .btn-qty {
-  width: 56px; height: 56px; min-width: 56px;
+  width: 56px; height: 56px; min-width: 56px; flex-shrink: 0;
   background: var(--surface2); border: 1.5px solid var(--border);
   border-radius: var(--r-sm); color: var(--text); font-size: 28px;
   display: flex; align-items: center; justify-content: center;
@@ -200,11 +200,11 @@ body {
 .btn-qty:active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); transform: scale(0.92); }
 
 .qty-input {
-  flex: 1; background: var(--surface); border: 1.5px solid var(--border);
+  flex: 1; min-width: 0; background: var(--surface); border: 1.5px solid var(--border);
   border-radius: var(--r-sm); color: var(--text);
   font-family: var(--mono); font-size: 36px; font-weight: 500;
   text-align: center; padding: 10px; outline: none; height: 56px;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s; width: 100%;
 }
 .qty-input:focus { border-color: var(--accent); }
 
