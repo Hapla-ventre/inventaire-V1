@@ -34,28 +34,36 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; }
+html { height: 100%; }
+body { min-height: 100%; }
 
 body {
   font-family: var(--sans);
   background: var(--bg);
   color: var(--text);
+  min-height: 100dvh;
+}
+
+.screen { display: none; }
+.screen.active { display: block; min-height: 100dvh; }
+
+/* Config screen centré */
+#screen-config.active {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
-  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
 }
 
-.screen { display: none; flex-direction: column; overflow: hidden; }
-.screen.active { display: flex; height: 100dvh; }
-
+/* Main screen : scroll natif total */
 #screen-main.active {
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
+  display: block;
+  min-height: 100dvh;
+  overflow-y: visible;
 }
 #screen-main .topbar { position: sticky; top: 0; z-index: 10; }
-#screen-main .log-section { overflow: visible; min-height: 300px; padding-bottom: calc(40px + var(--safe-bottom)); }
+#screen-main .log-section { min-height: 300px; padding-bottom: calc(40px + var(--safe-bottom)); overflow: visible; }
 
 /* ── CONNEXION ── */
 #screen-config {
@@ -133,7 +141,7 @@ body {
 .btn-primary:disabled { opacity: 0.25; cursor: not-allowed; transform: none; }
 
 /* ── PRINCIPAL ── */
-#screen-main { display: none; flex-direction: column; height: 100dvh; }
+#screen-main { display: none; }
 #screen-main.active { display: flex; }
 
 .topbar {
@@ -634,15 +642,33 @@ async function loadCatalogue() {
     const res = await fetch(url);
     const text = await res.text();
     const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
-    json.table.rows.forEach(row => {
-      // Prendre .v OU .f (formatted) — Google renvoie parfois la valeur dans .f pour les cellules texte
+    let skipped = 0;
+    json.table.rows.forEach((row, i) => {
+      if (!row || !row.c) return;
       const cell = row.c[CONFIG.COL_REF];
-      const ref = ((cell?.v ?? cell?.f ?? "")).toString().trim().toUpperCase();
-      const libelle = (row.c[CONFIG.COL_LIBELLE]?.v ?? "").toString().trim();
-      const stock = row.c[CONFIG.COL_STOCK]?.v ?? null;
-      if (ref) catalogue[ref] = { libelle, stock };
+      if (!cell) { skipped++; return; }
+      // Prendre toutes les formes possibles : v (valeur), f (formatée), label
+      const raw = cell.v ?? cell.f ?? cell.label ?? "";
+      const ref = raw.toString().trim().toUpperCase();
+      const libelleCell = row.c[CONFIG.COL_LIBELLE];
+      const libelle = (libelleCell?.v ?? libelleCell?.f ?? "").toString().trim();
+      const stockCell = row.c[CONFIG.COL_STOCK];
+      const stock = stockCell?.v ?? null;
+      if (ref && ref.length > 0) {
+        catalogue[ref] = { libelle, stock };
+      } else {
+        skipped++;
+        console.warn('Ligne ' + (i+2) + ' ignorée, cell brute:', JSON.stringify(cell));
+      }
     });
-    showToast(`${Object.keys(catalogue).length} références chargées`, 'success');
+    console.log('Catalogue chargé:', Object.keys(catalogue).length, '— ignorées:', skipped);
+    console.log('Clés:', Object.keys(catalogue).join(', '));
+    const keys = Object.keys(catalogue);
+    showToast(`${keys.length} références chargées`, 'success');
+    // Debug : affiche les refs avec lettres trouvées
+    const avecLettres = keys.filter(k => /[A-Z]/.test(k));
+    console.log('Refs avec lettres:', avecLettres.join(', ') || 'AUCUNE');
+    console.log('Toutes les refs:', keys.join(' | '));
   } catch (e) {
     showToast('Catalogue non chargé — saisie manuelle possible', 'warn');
   }
