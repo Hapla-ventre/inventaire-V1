@@ -29,73 +29,49 @@
   --sans: 'DM Sans', sans-serif;
   --r: 14px;
   --r-sm: 10px;
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-top: env(safe-area-inset-top, 0px);
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html { height: 100%; }
-body { min-height: 100%; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
+/* ── BASE : scroll natif sur tout le body ── */
+html { height: 100%; }
 body {
   font-family: var(--sans);
   background: var(--bg);
   color: var(--text);
-  min-height: 100dvh;
+  min-height: 100%;
+  /* PAS de overflow:hidden, PAS de height fixe → scroll natif du navigateur */
 }
 
+/* ── SCREENS ── */
 .screen { display: none; }
-.screen.active { display: block; min-height: 100dvh; }
+.screen.active { display: block; }
 
-/* Config screen centré */
+/* ── CONNEXION ── */
 #screen-config.active {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100dvh;
-}
-
-/* Main screen : scroll natif total */
-#screen-main.active {
-  display: block;
-  min-height: 100dvh;
-  overflow-y: visible;
-}
-#screen-main .topbar { position: sticky; top: 0; z-index: 10; }
-#screen-main .log-section { min-height: 300px; padding-bottom: calc(40px + var(--safe-bottom)); overflow: visible; }
-
-/* ── CONNEXION ── */
-#screen-config {
-  align-items: center;
-  justify-content: center;
-  padding: calc(24px + var(--safe-top)) 24px calc(24px + var(--safe-bottom));
+  min-height: 100svh;
+  padding: 32px 24px;
 }
 
 .config-logo {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.25em;
-  color: var(--accent);
-  text-transform: uppercase;
-  margin-bottom: 40px;
-  opacity: 0.7;
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.25em; color: var(--accent);
+  text-transform: uppercase; margin-bottom: 40px; opacity: 0.7;
 }
 .config-title {
-  font-size: clamp(24px, 7vw, 32px);
-  font-weight: 300;
-  letter-spacing: -0.02em;
-  margin-bottom: 6px;
-  text-align: center;
+  font-size: 28px; font-weight: 300;
+  letter-spacing: -0.02em; margin-bottom: 6px; text-align: center;
 }
 .config-sub { font-size: 14px; color: var(--text2); margin-bottom: 32px; text-align: center; }
 
 .config-card {
   width: 100%; max-width: 400px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 24px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 24px;
   display: flex; flex-direction: column; gap: 18px;
 }
 
@@ -104,87 +80,73 @@ body {
   letter-spacing: 0.14em; color: var(--text2);
   text-transform: uppercase; margin-bottom: 8px;
 }
-
 .field-select, .field-input {
-  width: 100%;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  color: var(--text);
-  font-family: var(--sans);
-  font-size: 16px;
-  padding: 14px 16px;
-  appearance: none; -webkit-appearance: none;
-  outline: none;
+  width: 100%; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  color: var(--text); font-family: var(--sans); font-size: 16px;
+  padding: 14px 16px; appearance: none; -webkit-appearance: none; outline: none;
   transition: border-color 0.2s;
 }
 .field-select:focus, .field-input:focus { border-color: var(--accent); }
 .select-wrap { position: relative; }
 .select-wrap::after {
-  content: ''; position: absolute;
-  right: 16px; top: 50%; transform: translateY(-50%);
+  content: ''; position: absolute; right: 16px; top: 50%;
+  transform: translateY(-50%); pointer-events: none;
   width: 0; height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
+  border-left: 5px solid transparent; border-right: 5px solid transparent;
   border-top: 6px solid var(--text2);
-  pointer-events: none;
 }
 
 .btn-primary {
   width: 100%; background: var(--accent); color: #050f09;
   border: none; border-radius: var(--r-sm);
   font-family: var(--sans); font-size: 16px; font-weight: 600;
-  padding: 16px; cursor: pointer;
-  transition: opacity 0.15s, transform 0.1s;
+  padding: 16px; cursor: pointer; transition: opacity 0.15s, transform 0.1s;
 }
 .btn-primary:active { opacity: 0.82; transform: scale(0.98); }
 .btn-primary:disabled { opacity: 0.25; cursor: not-allowed; transform: none; }
 
-/* ── PRINCIPAL ── */
-#screen-main { display: none; }
-#screen-main.active { display: flex; }
+/* ── ÉCRAN PRINCIPAL ── */
+#screen-main.active { display: block; }
 
 .topbar {
-  flex-shrink: 0;
+  position: sticky; top: 0; z-index: 50;
   display: flex; align-items: center; justify-content: space-between;
-  padding: calc(12px + var(--safe-top)) 16px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  padding: 14px 16px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
 }
 .topbar-user { display: flex; align-items: center; gap: 8px; }
 .user-dot {
   width: 7px; height: 7px; border-radius: 50%;
-  background: var(--accent); box-shadow: 0 0 6px var(--accent); flex-shrink: 0;
+  background: var(--accent); box-shadow: 0 0 6px var(--accent);
 }
 .user-name { font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: 0.06em; }
 .stat-pill {
   font-family: var(--mono); font-size: 11px; color: var(--text2);
   background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 20px; padding: 4px 10px; white-space: nowrap;
+  border-radius: 20px; padding: 4px 10px;
 }
 .stat-pill span { color: var(--text); }
 
-.scan-zone {
-  flex-shrink: 0;
-  padding: 14px 16px 10px;
-  display: flex; flex-direction: column; gap: 10px;
-}
+.main-content { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
 .scan-label {
   font-family: var(--mono); font-size: 9px;
   letter-spacing: 0.18em; color: var(--text3); text-transform: uppercase;
+  margin-bottom: 6px;
 }
-.scan-input-row { display: flex; gap: 8px; align-items: stretch; }
+
+.scan-input-row { display: flex; gap: 8px; }
 
 .ref-input {
   flex: 1; min-width: 0;
   background: var(--surface); border: 1.5px solid var(--border);
   border-radius: var(--r-sm); color: var(--text);
-  font-family: var(--mono); font-size: clamp(18px, 5vw, 24px);
-  font-weight: 500; letter-spacing: 0.06em;
-  padding: 12px 14px; outline: none;
+  font-family: var(--mono); font-size: 22px; font-weight: 500;
+  letter-spacing: 0.06em; padding: 12px 14px; outline: none;
   transition: border-color 0.2s; text-transform: uppercase;
 }
-.ref-input::placeholder { color: var(--text3); font-size: 14px; letter-spacing: 0.02em; font-weight: 400; }
+.ref-input::placeholder { color: var(--text3); font-size: 14px; font-weight: 400; letter-spacing: 0.02em; }
 .ref-input:focus { border-color: var(--accent); }
 .ref-input.found { border-color: var(--accent); }
 .ref-input.not-found { border-color: var(--danger); }
@@ -192,9 +154,8 @@ body {
 .btn-cam {
   background: var(--surface2); border: 1.5px solid var(--border);
   border-radius: var(--r-sm); color: var(--text2);
-  width: 52px; min-width: 52px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: all 0.15s;
+  width: 52px; min-width: 52px; height: 54px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
 .btn-cam:active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
 .btn-cam svg { width: 20px; height: 20px; }
@@ -203,61 +164,47 @@ body {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r); padding: 12px 14px;
   display: flex; align-items: center; gap: 10px;
-  transition: all 0.2s; min-height: 58px; flex-shrink: 0;
+  transition: all 0.2s;
 }
 .article-card.found { border-color: var(--accent); background: var(--accent-dim2); }
 .article-card.not-found { border-color: var(--danger); background: var(--danger-dim); }
 .article-card.empty { opacity: 0.35; }
 
 .article-icon {
-  width: 32px; height: 32px; min-width: 32px;
-  border-radius: 7px; background: var(--accent-dim);
-  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; min-width: 36px; border-radius: 8px;
+  background: var(--accent-dim); display: flex; align-items: center; justify-content: center;
 }
-.article-icon svg { width: 16px; height: 16px; color: var(--accent); }
+.article-icon svg { width: 18px; height: 18px; color: var(--accent); }
 .article-card.not-found .article-icon { background: var(--danger-dim); }
 .article-card.not-found .article-icon svg { color: var(--danger); }
 
 .article-info { flex: 1; min-width: 0; }
-.article-name {
-  font-size: 13px; font-weight: 500; color: var(--text);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.article-meta {
-  font-family: var(--mono); font-size: 10px; color: var(--text2); margin-top: 2px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+.article-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.article-meta { font-family: var(--mono); font-size: 11px; color: var(--text2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .article-stock { text-align: right; flex-shrink: 0; }
-.article-stock-val { font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--text); }
+.article-stock-val { font-family: var(--mono); font-size: 16px; font-weight: 500; }
 .article-stock-label { font-size: 9px; color: var(--text3); margin-top: 1px; }
 
-.divider { height: 1px; background: var(--border); flex-shrink: 0; margin: 0 16px; }
+.divider { height: 1px; background: var(--border); }
 
-.qty-section {
-  flex-shrink: 0;
-  padding: 12px 16px;
-  display: flex; flex-direction: column; gap: 10px;
-}
+.qty-section { display: flex; flex-direction: column; gap: 10px; }
 .qty-row { display: flex; gap: 8px; align-items: center; }
 
 .btn-qty {
-  width: 52px; height: 52px; min-width: 52px;
+  width: 56px; height: 56px; min-width: 56px;
   background: var(--surface2); border: 1.5px solid var(--border);
-  border-radius: var(--r-sm); color: var(--text);
-  font-size: 26px; line-height: 1;
+  border-radius: var(--r-sm); color: var(--text); font-size: 28px;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; user-select: none; transition: all 0.1s;
+  cursor: pointer; user-select: none;
 }
 .btn-qty:active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); transform: scale(0.92); }
 
 .qty-input {
-  flex: 1;
-  background: var(--surface); border: 1.5px solid var(--border);
+  flex: 1; background: var(--surface); border: 1.5px solid var(--border);
   border-radius: var(--r-sm); color: var(--text);
-  font-family: var(--mono); font-size: clamp(28px, 8vw, 36px);
-  font-weight: 500; text-align: center;
-  padding: 10px; outline: none;
-  transition: border-color 0.2s; height: 52px;
+  font-family: var(--mono); font-size: 36px; font-weight: 500;
+  text-align: center; padding: 10px; outline: none; height: 56px;
+  transition: border-color 0.2s;
 }
 .qty-input:focus { border-color: var(--accent); }
 
@@ -265,74 +212,66 @@ body {
   width: 100%; background: var(--accent); color: #050f09;
   border: none; border-radius: var(--r-sm);
   font-family: var(--sans); font-size: 16px; font-weight: 600;
-  padding: 16px; cursor: pointer;
-  transition: opacity 0.15s, transform 0.1s;
+  padding: 17px; cursor: pointer; transition: opacity 0.15s, transform 0.1s;
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  min-height: 52px;
 }
 .btn-validate:active { opacity: 0.82; transform: scale(0.98); }
 .btn-validate:disabled { opacity: 0.2; cursor: not-allowed; transform: none; }
 
-.log-section {
-  flex: 1;
-  padding: 12px 16px calc(16px + var(--safe-bottom));
-}
 .log-header {
   font-family: var(--mono); font-size: 9px;
-  letter-spacing: 0.18em; color: var(--text3);
-  text-transform: uppercase; margin-bottom: 8px;
+  letter-spacing: 0.18em; color: var(--text3); text-transform: uppercase; margin-bottom: 8px;
 }
 .log-item {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-sm); padding: 9px 12px;
-  display: flex; align-items: center; gap: 8px;
-  margin-bottom: 6px; animation: slideIn 0.2s ease;
+  border-radius: var(--r-sm); padding: 10px 12px;
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  animation: slideIn 0.2s ease;
 }
-@keyframes slideIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+@keyframes slideIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
 .log-ref { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--accent); flex-shrink: 0; }
 .log-name { font-size: 12px; color: var(--text2); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.log-qty { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--text); flex-shrink: 0; }
+.log-qty { font-family: var(--mono); font-size: 13px; font-weight: 500; flex-shrink: 0; }
 .log-time { font-family: var(--mono); font-size: 10px; color: var(--text3); flex-shrink: 0; }
 
+/* Spinner */
 .spinner {
-  width: 16px; height: 16px;
-  border: 2px solid rgba(5,15,9,0.3); border-top-color: #050f09;
-  border-radius: 50%; animation: spin 0.6s linear infinite; display: none;
+  width: 16px; height: 16px; border: 2px solid rgba(5,15,9,0.3);
+  border-top-color: #050f09; border-radius: 50%;
+  animation: spin 0.6s linear infinite; display: none;
 }
 .loading .spinner { display: block; }
 .loading .btn-text { display: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Toast */
 .toast {
-  position: fixed;
-  bottom: calc(20px + var(--safe-bottom)); left: 50%;
+  position: fixed; bottom: 24px; left: 50%;
   transform: translateX(-50%) translateY(80px);
   background: var(--surface2); border: 1px solid var(--border);
   border-radius: 40px; padding: 11px 20px;
-  font-size: 14px; color: var(--text);
-  white-space: nowrap;
+  font-size: 14px; color: var(--text); white-space: nowrap;
   transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1);
-  z-index: 300; pointer-events: none;
-  max-width: calc(100vw - 40px);
+  z-index: 300; pointer-events: none; max-width: calc(100vw - 40px);
 }
 .toast.show { transform: translateX(-50%) translateY(0); }
 .toast.success { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
 .toast.error { background: var(--danger-dim); border-color: var(--danger); color: var(--danger); }
 .toast.warn { background: var(--warn-dim); border-color: var(--warn); color: var(--warn); }
 
-/* ── CAMÉRA ── */
+/* ── CAMÉRA (position:fixed → hors du flux, n'affecte pas le scroll) ── */
 .cam-overlay {
   display: none; position: fixed; inset: 0;
-  background: #000; z-index: 200; flex-direction: column;
+  background: #000; z-index: 200;
 }
-.cam-overlay.active { display: flex; }
+.cam-overlay.active { display: block; }
 #cam-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 #cam-canvas { display: none; }
 
 .cam-ui {
   position: absolute; inset: 0;
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 0;
+  align-items: center; justify-content: center;
 }
 .cam-viewfinder { width: min(280px, 80vw); height: 72px; position: relative; }
 .cam-viewfinder-inner {
@@ -350,43 +289,37 @@ body {
 .cam-scanline {
   position: absolute; left: 4px; right: 4px; height: 2px;
   background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  animation: scanline 1.8s ease-in-out infinite; opacity: 0.8;
+  animation: scanline 1.8s ease-in-out infinite;
 }
 @keyframes scanline {
   0%   { top:10%; opacity:0; } 20% { opacity:1; }
   80%  { opacity:1; } 100% { top:90%; opacity:0; }
 }
 .cam-hint {
-  margin-top: 20px;
-  font-family: var(--mono); font-size: 12px;
-  letter-spacing: 0.1em; color: rgba(255,255,255,0.55);
-  text-align: center; padding: 0 20px;
+  margin-top: 20px; font-family: var(--mono); font-size: 12px;
+  letter-spacing: 0.1em; color: rgba(255,255,255,0.55); text-align: center;
 }
 .cam-scan-btn {
-  position: absolute;
-  bottom: calc(48px + var(--safe-bottom)); left: 50%;
-  transform: translateX(-50%);
+  position: absolute; bottom: 48px; left: 50%; transform: translateX(-50%);
   width: 72px; height: 72px; border-radius: 50%;
-  background: rgba(255,255,255,0.08);
-  border: 2px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.25);
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: all 0.15s; touch-action: none;
+  cursor: pointer; touch-action: none;
 }
 .cam-scan-btn.scanning { background: var(--accent); border-color: var(--accent); transform: translateX(-50%) scale(0.93); }
 .cam-scan-btn svg { width: 28px; height: 28px; color: #fff; }
 .cam-scan-btn.scanning svg { color: #050f09; }
 .cam-close {
-  position: absolute; top: calc(16px + var(--safe-top)); right: 16px;
+  position: absolute; top: 20px; right: 16px;
   background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15);
   border-radius: 50%; width: 40px; height: 40px;
   color: #fff; font-size: 18px;
-  display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
 .cam-status {
-  position: absolute; top: calc(16px + var(--safe-top)); left: 16px;
-  font-family: var(--mono); font-size: 11px;
-  color: rgba(255,255,255,0.5); background: rgba(0,0,0,0.4);
-  padding: 6px 10px; border-radius: 20px; letter-spacing: 0.08em;
+  position: absolute; top: 20px; left: 16px;
+  font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,0.5);
+  background: rgba(0,0,0,0.4); padding: 6px 10px; border-radius: 20px;
 }
 .cam-status.ready { color: var(--accent); }
 
@@ -399,10 +332,8 @@ body {
 .confirm-overlay.active { display: flex; }
 .confirm-sheet {
   width: 100%; max-width: 480px;
-  background: var(--surface);
-  border-radius: 20px 20px 0 0;
-  border-top: 1px solid var(--border);
-  padding: 20px 20px calc(20px + var(--safe-bottom));
+  background: var(--surface); border-radius: 20px 20px 0 0;
+  border-top: 1px solid var(--border); padding: 20px 20px 32px;
   animation: slideUp 0.3s cubic-bezier(0.34,1.4,0.64,1);
 }
 @keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
@@ -411,14 +342,12 @@ body {
   border-radius: 2px; margin: 0 auto 18px;
 }
 .confirm-title {
-  font-family: var(--mono); font-size: 10px;
-  letter-spacing: 0.16em; color: var(--text3);
-  text-transform: uppercase; margin-bottom: 12px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+  color: var(--text3); text-transform: uppercase; margin-bottom: 12px;
 }
 .confirm-photo {
   width: 100%; height: 90px; object-fit: cover;
-  border-radius: var(--r-sm); border: 1px solid var(--border);
-  margin-bottom: 14px; background: var(--surface2);
+  border-radius: var(--r-sm); border: 1px solid var(--border); margin-bottom: 14px;
 }
 .confirm-ref-box {
   background: var(--surface2); border: 1px solid var(--border);
@@ -430,8 +359,8 @@ body {
 }
 .confirm-ref-edit {
   width: 100%; background: transparent; border: none; outline: none;
-  font-family: var(--mono); font-size: clamp(22px, 6vw, 28px);
-  font-weight: 500; color: var(--text); letter-spacing: 0.08em;
+  font-family: var(--mono); font-size: 26px; font-weight: 500;
+  color: var(--text); letter-spacing: 0.08em;
   text-transform: uppercase; caret-color: var(--accent);
 }
 .confirm-btns { display: flex; gap: 10px; }
@@ -439,16 +368,16 @@ body {
   flex: 1; background: var(--surface2); border: 1.5px solid var(--border);
   border-radius: var(--r-sm); color: var(--text2);
   font-family: var(--sans); font-size: 15px; font-weight: 500;
-  padding: 14px; cursor: pointer; transition: all 0.15s;
+  padding: 14px; cursor: pointer;
 }
 .btn-retry:active { border-color: var(--text2); color: var(--text); }
 .btn-confirm {
   flex: 2; background: var(--accent); border: none;
   border-radius: var(--r-sm); color: #050f09;
   font-family: var(--sans); font-size: 15px; font-weight: 600;
-  padding: 14px; cursor: pointer; transition: all 0.15s;
+  padding: 14px; cursor: pointer;
 }
-.btn-confirm:active { opacity: 0.82; transform: scale(0.98); }
+.btn-confirm:active { opacity: 0.82; }
 </style>
 </head>
 <body>
@@ -465,7 +394,7 @@ const CONFIG = {
 
 <!-- CONNEXION -->
 <div id="screen-config" class="screen active">
-  <div class="config-logo">Inventaire · v2.0</div>
+  <div class="config-logo">Inventaire · v3.0</div>
   <h1 class="config-title">Bienvenue</h1>
   <p class="config-sub">Sélectionnez votre nom pour commencer</p>
   <div class="config-card">
@@ -495,19 +424,23 @@ const CONFIG = {
     <div class="stat-pill"><span id="stat-count">0</span> scannés</div>
   </div>
 
-  <div class="scan-zone">
-    <div class="scan-label">Référence article</div>
-    <div class="scan-input-row">
-      <input type="text" id="ref-input" class="ref-input"
-             placeholder="172055 ou 2G6417A"
-             autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
-      <button class="btn-cam" id="btn-cam">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-          <circle cx="12" cy="13" r="4"/>
-        </svg>
-      </button>
+  <div class="main-content">
+
+    <div>
+      <div class="scan-label">Référence article</div>
+      <div class="scan-input-row">
+        <input type="text" id="ref-input" class="ref-input"
+               placeholder="172055 ou 2G6417A"
+               autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+        <button class="btn-cam" id="btn-cam">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </button>
+      </div>
     </div>
+
     <div class="article-card empty" id="article-card">
       <div class="article-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -524,27 +457,28 @@ const CONFIG = {
         <div class="article-stock-label">stock actuel</div>
       </div>
     </div>
-  </div>
 
-  <div class="divider"></div>
+    <div class="divider"></div>
 
-  <div class="qty-section">
-    <div class="qty-row">
-      <button class="btn-qty" id="btn-minus">−</button>
-      <input type="number" id="qty-input" class="qty-input" value="0" min="0" inputmode="numeric">
-      <button class="btn-qty" id="btn-plus">+</button>
+    <div class="qty-section">
+      <div class="qty-row">
+        <button class="btn-qty" id="btn-minus">−</button>
+        <input type="number" id="qty-input" class="qty-input" value="0" min="0" inputmode="numeric">
+        <button class="btn-qty" id="btn-plus">+</button>
+      </div>
+      <button class="btn-validate" id="btn-validate" disabled>
+        <div class="spinner"></div>
+        <span class="btn-text">Valider</span>
+      </button>
     </div>
-    <button class="btn-validate" id="btn-validate" disabled>
-      <div class="spinner"></div>
-      <span class="btn-text">Valider</span>
-    </button>
-  </div>
 
-  <div class="divider"></div>
+    <div class="divider"></div>
 
-  <div class="log-section">
-    <div class="log-header">Scans de cette session</div>
-    <div id="log-list"></div>
+    <div>
+      <div class="log-header">Scans de cette session</div>
+      <div id="log-list"></div>
+    </div>
+
   </div>
 </div>
 
@@ -574,7 +508,7 @@ const CONFIG = {
   <div class="confirm-sheet">
     <div class="confirm-handle"></div>
     <div class="confirm-title">Référence détectée — corrigez si besoin</div>
-    <img id="confirm-photo" class="confirm-photo" src="" alt="Capture">
+    <img id="confirm-photo" class="confirm-photo" src="" alt="">
     <div class="confirm-ref-box">
       <div class="confirm-ref-label">Référence lue</div>
       <input type="text" id="confirm-ref-edit" class="confirm-ref-edit"
@@ -642,33 +576,19 @@ async function loadCatalogue() {
     const res = await fetch(url);
     const text = await res.text();
     const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
-    let skipped = 0;
     json.table.rows.forEach((row, i) => {
       if (!row || !row.c) return;
       const cell = row.c[CONFIG.COL_REF];
-      if (!cell) { skipped++; return; }
-      // Prendre toutes les formes possibles : v (valeur), f (formatée), label
+      if (!cell) return;
       const raw = cell.v ?? cell.f ?? cell.label ?? "";
       const ref = raw.toString().trim().toUpperCase();
       const libelleCell = row.c[CONFIG.COL_LIBELLE];
       const libelle = (libelleCell?.v ?? libelleCell?.f ?? "").toString().trim();
       const stockCell = row.c[CONFIG.COL_STOCK];
       const stock = stockCell?.v ?? null;
-      if (ref && ref.length > 0) {
-        catalogue[ref] = { libelle, stock };
-      } else {
-        skipped++;
-        console.warn('Ligne ' + (i+2) + ' ignorée, cell brute:', JSON.stringify(cell));
-      }
+      if (ref) catalogue[ref] = { libelle, stock };
     });
-    console.log('Catalogue chargé:', Object.keys(catalogue).length, '— ignorées:', skipped);
-    console.log('Clés:', Object.keys(catalogue).join(', '));
-    const keys = Object.keys(catalogue);
-    showToast(`${keys.length} références chargées`, 'success');
-    // Debug : affiche les refs avec lettres trouvées
-    const avecLettres = keys.filter(k => /[A-Z]/.test(k));
-    console.log('Refs avec lettres:', avecLettres.join(', ') || 'AUCUNE');
-    console.log('Toutes les refs:', keys.join(' | '));
+    showToast(`${Object.keys(catalogue).length} références chargées`, 'success');
   } catch (e) {
     showToast('Catalogue non chargé — saisie manuelle possible', 'warn');
   }
@@ -679,6 +599,7 @@ function lookupRef(ref) {
   const card = document.getElementById('article-card');
   const input = document.getElementById('ref-input');
   const vBtn = document.getElementById('btn-validate');
+
   if (!ref) {
     card.className = 'article-card empty';
     document.getElementById('article-name').textContent = 'Scannez une référence';
@@ -686,19 +607,15 @@ function lookupRef(ref) {
     document.getElementById('article-stock').textContent = '—';
     vBtn.disabled = true; return;
   }
-  // Debug : affiche les 3 premières refs du catalogue pour vérifier le format
-  if (Object.keys(catalogue).length > 0 && ref.length > 2) {
-    const sample = Object.keys(catalogue).slice(0,3).map(k => JSON.stringify(k)).join(', ');
-    console.log('Catalogue sample:', sample);
-    console.log('Recherche:', JSON.stringify(ref));
-  }
-  // Cherche exact d'abord, puis en ignorant espaces internes
+
   let art = catalogue[ref];
+  // Fallback : ignorer espaces internes
   if (!art) {
-    const refClean = ref.replace(/\s+/g, '');
-    const found = Object.keys(catalogue).find(k => k.replace(/\s+/g, '') === refClean);
-    if (found) { art = catalogue[found]; console.log('Trouvé via clean:', found); }
+    const clean = ref.replace(/\s+/g, '');
+    const found = Object.keys(catalogue).find(k => k.replace(/\s+/g, '') === clean);
+    if (found) art = catalogue[found];
   }
+
   if (art) {
     currentRef = ref;
     input.className = 'ref-input found'; card.className = 'article-card found';
@@ -756,7 +673,6 @@ function resetScan() {
   document.getElementById('article-stock').textContent = '—';
   document.getElementById('btn-validate').disabled = true;
   currentRef = null;
-  document.getElementById('ref-input').focus();
 }
 
 function addLog(ref, name, qty) {
@@ -811,12 +727,10 @@ async function triggerOCR() {
   const ctx = canvas.getContext('2d');
   ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
-  // Snapshot pour la preview
   const preview = document.createElement('canvas');
   preview.width = cropW; preview.height = cropH;
   preview.getContext('2d').drawImage(canvas, 0, 0);
 
-  // Amélioration contraste
   ctx.filter = 'contrast(2.2) brightness(1.15) grayscale(1)';
   ctx.drawImage(canvas, 0, 0);
 
@@ -829,7 +743,6 @@ async function triggerOCR() {
       showConfirmModal(match[0], preview.toDataURL('image/jpeg', 0.8));
     } else {
       document.getElementById('cam-status').textContent = 'Rien détecté — réessayez';
-      document.getElementById('cam-status').className = 'cam-status';
       setTimeout(() => {
         if (ocrReady) {
           document.getElementById('cam-status').textContent = 'Prêt — appuyez pour scanner';
@@ -862,11 +775,7 @@ function showConfirmModal(ref, photoUrl) {
 function confirmOCR() {
   const ref = document.getElementById('confirm-ref-edit').value.trim().toUpperCase();
   document.getElementById('confirm-overlay').classList.remove('active');
-  if (ref) {
-    document.getElementById('ref-input').value = ref;
-    lookupRef(ref);
-    document.getElementById('qty-input').focus();
-  }
+  if (ref) { document.getElementById('ref-input').value = ref; lookupRef(ref); }
 }
 
 function retryOCR() {
