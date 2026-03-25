@@ -735,14 +735,34 @@ async function triggerOCR() {
   ctx.drawImage(canvas, 0, 0);
 
   try {
-    const { data: { text } } = await ocrWorker.recognize(canvas);
-    const cleaned = text.replace(/\s/g, '').toUpperCase();
+    const { data } = await ocrWorker.recognize(canvas);
+    const cleaned = data.text.replace(/\s/g, '').toUpperCase();
     const match = cleaned.match(/[A-Z0-9]{3,}/);
     btn.classList.remove('scanning');
     if (match) {
-      showConfirmModal(match[0], preview.toDataURL('image/jpeg', 0.8));
+      // Recadrer la preview autour du texte détecté (bbox Tesseract)
+      let croppedUrl;
+      try {
+        // Trouver le mot qui correspond au match dans data.words
+        const word = data.words && data.words.find(w =>
+          w.text.replace(/\s/g,'').toUpperCase().includes(match[0].slice(0,4))
+        );
+        if (word && word.bbox) {
+          const b = word.bbox;
+          const pad = 20;
+          const x = Math.max(0, b.x0 - pad);
+          const y = Math.max(0, b.y0 - pad);
+          const w = Math.min(canvas.width - x, (b.x1 - b.x0) + pad * 2);
+          const h = Math.min(canvas.height - y, (b.y1 - b.y0) + pad * 2);
+          const cropC = document.createElement('canvas');
+          cropC.width = w; cropC.height = h;
+          // Dessiner depuis la preview (non filtrée) recadrée sur la bbox
+          cropC.getContext('2d').drawImage(preview, x, y, w, h, 0, 0, w, h);
+          croppedUrl = cropC.toDataURL('image/jpeg', 0.9);
+        }
+      } catch(e2) {}
+      showConfirmModal(match[0], croppedUrl || preview.toDataURL('image/jpeg', 0.8));
     } else {
-      // Rien détecté : on remet le statut "prêt" silencieusement, l'utilisateur réessaie
       document.getElementById('cam-status').textContent = 'Prêt — appuyez pour scanner';
       document.getElementById('cam-status').className = 'cam-status ready';
     }
