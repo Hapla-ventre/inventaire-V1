@@ -43,17 +43,17 @@ body {
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  touch-action: manipulation;
 }
 
 .screen { display: none; flex-direction: column; overflow: hidden; }
 .screen.active { display: flex; height: 100dvh; }
 
 #screen-main.active {
-  overflow-y: auto;
+  overflow-y: scroll;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
+  overscroll-behavior-y: auto;
+  touch-action: pan-y;
 }
 #screen-main .topbar { position: sticky; top: 0; z-index: 10; }
 #screen-main .log-section { overflow: visible; min-height: 200px; }
@@ -602,7 +602,7 @@ function init() {
   document.getElementById('btn-start').addEventListener('click', startSession);
   document.getElementById('ref-input').addEventListener('input', e => {
     clearTimeout(window._rd);
-    window._rd = setTimeout(() => lookupRef(e.target.value.replace(/[^A-Z0-9]/gi, '').toUpperCase()), 280);
+    window._rd = setTimeout(() => lookupRef(e.target.value.trim().toUpperCase()), 280);
   });
   document.getElementById('ref-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('qty-input').focus();
@@ -637,7 +637,7 @@ async function loadCatalogue() {
     const text = await res.text();
     const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
     json.table.rows.forEach(row => {
-      const ref = (row.c[CONFIG.COL_REF]?.v ?? "").toString().replace(/[^A-Z0-9]/gi, '').toUpperCase();
+      const ref = (row.c[CONFIG.COL_REF]?.v ?? "").toString().trim().toUpperCase();
       const libelle = (row.c[CONFIG.COL_LIBELLE]?.v ?? "").toString().trim();
       const stock = row.c[CONFIG.COL_STOCK]?.v ?? null;
       if (ref) catalogue[ref] = { libelle, stock };
@@ -660,7 +660,19 @@ function lookupRef(ref) {
     document.getElementById('article-stock').textContent = '—';
     vBtn.disabled = true; return;
   }
-  const art = catalogue[ref];
+  // Debug : affiche les 3 premières refs du catalogue pour vérifier le format
+  if (Object.keys(catalogue).length > 0 && ref.length > 2) {
+    const sample = Object.keys(catalogue).slice(0,3).map(k => JSON.stringify(k)).join(', ');
+    console.log('Catalogue sample:', sample);
+    console.log('Recherche:', JSON.stringify(ref));
+  }
+  // Cherche exact d'abord, puis en ignorant espaces internes
+  let art = catalogue[ref];
+  if (!art) {
+    const refClean = ref.replace(/\s+/g, '');
+    const found = Object.keys(catalogue).find(k => k.replace(/\s+/g, '') === refClean);
+    if (found) { art = catalogue[found]; console.log('Trouvé via clean:', found); }
+  }
   if (art) {
     currentRef = ref;
     input.className = 'ref-input found'; card.className = 'article-card found';
