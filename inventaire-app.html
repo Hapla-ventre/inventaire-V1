@@ -950,14 +950,25 @@ async function validate() {
 }
 
 function resetScan() {
+  // Ref et article
   document.getElementById('ref-input').value = '';
   document.getElementById('ref-input').className = 'ref-input';
   document.getElementById('article-card').className = 'article-card empty';
   document.getElementById('article-name').textContent = 'Scannez une référence';
   document.getElementById('article-meta').textContent = '—';
-  
   document.getElementById('btn-validate').disabled = true;
   currentRef = null;
+  // Lignes de comptage : reset à 1 ligne vierge
+  document.getElementById('count-lines').innerHTML = '';
+  lineCount = 0;
+  addCountLine();
+  document.getElementById('final-display').textContent = '0';
+  // Unité de comptage : reset à "Unité"
+  document.querySelectorAll('.unite-btn').forEach((b, i) => b.classList.toggle('active', i === 0));
+  document.getElementById('mult-custom').style.display = 'none';
+  document.getElementById('mult-custom').value = '';
+  // Focus sur ref-input pour scan suivant
+  document.getElementById('ref-input').focus();
 }
 
 function addLog(ref, name, qty) {
