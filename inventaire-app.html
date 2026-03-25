@@ -683,6 +683,8 @@ function init() {
     showToast('Chargement du catalogue…', '');
     loadCatalogue();
     restoreLogs();
+    document.getElementById('btn-add-line').disabled = false;
+    if (document.getElementById('count-lines').children.length === 0) addCountLine();
   }
 
   // Bouton retour telephone
@@ -735,6 +737,9 @@ async function startSession() {
   document.getElementById('display-user').textContent = currentUser;
   sessionStorage.setItem('inv_user', currentUser);
   showScreen('screen-main');
+  // Activer les lignes de comptage dès le départ
+  document.getElementById('btn-add-line').disabled = false;
+  addCountLine();
   history.pushState({ screen: 'main' }, '');
   showToast('Chargement du catalogue…', '');
   await loadCatalogue();
@@ -776,10 +781,6 @@ function lookupRef(ref) {
     document.getElementById('article-meta').textContent = '—';
     
     vBtn.disabled = true;
-    document.getElementById('count-lines').innerHTML = '';
-    document.getElementById('btn-add-line').disabled = true;
-    document.getElementById('final-display').textContent = '0';
-    lineCount = 0;
     return;
   }
 
@@ -885,10 +886,7 @@ function removeLine(id) {
 }
 
 function getMultiplier() {
-  const active = document.querySelector('.unite-btn.active');
-  const val = active ? active.dataset.val : '1';
-  if (val === 'custom') return parseInt(document.getElementById('mult-custom').value) || 1;
-  return parseInt(val) || 1;
+  return 1; // Le conditionnement est une info, pas un multiplicateur
 }
 
 function updateTotal() {
