@@ -34,7 +34,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+html, body { height: 100%; }
 
 body {
   font-family: var(--sans);
@@ -43,20 +43,19 @@ body {
   display: flex;
   flex-direction: column;
   height: 100dvh;
+  overflow: hidden;
 }
 
 .screen { display: none; flex-direction: column; overflow: hidden; }
 .screen.active { display: flex; height: 100dvh; }
 
 #screen-main.active {
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: auto;
-  touch-action: pan-y;
 }
 #screen-main .topbar { position: sticky; top: 0; z-index: 10; }
-#screen-main .log-section { overflow: visible; min-height: 200px; }
+#screen-main .log-section { overflow: visible; min-height: 300px; padding-bottom: calc(40px + var(--safe-bottom)); }
 
 /* ── CONNEXION ── */
 #screen-config {
@@ -134,7 +133,7 @@ body {
 .btn-primary:disabled { opacity: 0.25; cursor: not-allowed; transform: none; }
 
 /* ── PRINCIPAL ── */
-#screen-main { display: none; flex-direction: column; height: 100dvh; overflow: hidden; }
+#screen-main { display: none; flex-direction: column; height: 100dvh; }
 #screen-main.active { display: flex; }
 
 .topbar {
@@ -267,9 +266,8 @@ body {
 .btn-validate:disabled { opacity: 0.2; cursor: not-allowed; transform: none; }
 
 .log-section {
-  flex: 1; overflow-y: auto;
+  flex: 1;
   padding: 12px 16px calc(16px + var(--safe-bottom));
-  -webkit-overflow-scrolling: touch;
 }
 .log-header {
   font-family: var(--mono); font-size: 9px;
@@ -637,7 +635,9 @@ async function loadCatalogue() {
     const text = await res.text();
     const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
     json.table.rows.forEach(row => {
-      const ref = (row.c[CONFIG.COL_REF]?.v ?? "").toString().trim().toUpperCase();
+      // Prendre .v OU .f (formatted) — Google renvoie parfois la valeur dans .f pour les cellules texte
+      const cell = row.c[CONFIG.COL_REF];
+      const ref = ((cell?.v ?? cell?.f ?? "")).toString().trim().toUpperCase();
       const libelle = (row.c[CONFIG.COL_LIBELLE]?.v ?? "").toString().trim();
       const stock = row.c[CONFIG.COL_STOCK]?.v ?? null;
       if (ref) catalogue[ref] = { libelle, stock };
