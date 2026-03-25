@@ -513,6 +513,16 @@ const CONFIG = {
       <div class="confirm-ref-label">Référence lue</div>
       <input type="text" id="confirm-ref-edit" class="confirm-ref-edit"
              autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+      <div id="confirm-libelle" style="
+        margin-top: 8px;
+        font-family: var(--sans);
+        font-size: 13px;
+        color: var(--text2);
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 2px;
+      ">—</div>
     </div>
     <div class="confirm-btns">
       <button class="btn-retry" id="btn-retry">Réessayer</button>
@@ -559,6 +569,13 @@ function init() {
 
   document.getElementById('btn-confirm').addEventListener('click', confirmOCR);
   document.getElementById('btn-retry').addEventListener('click', retryOCR);
+  document.getElementById('confirm-ref-edit').addEventListener('input', e => {
+    const r = e.target.value.trim().toUpperCase();
+    const a = catalogue[r];
+    const lbl = document.getElementById('confirm-libelle');
+    lbl.textContent = a?.libelle || (r ? 'Référence inconnue' : '—');
+    lbl.style.color = a?.libelle ? 'var(--text2)' : 'var(--danger)';
+  });
 }
 
 async function startSession() {
@@ -786,6 +803,11 @@ function showConfirmModal(ref, photoUrl) {
   closeCamera();
   document.getElementById('confirm-photo').src = photoUrl;
   document.getElementById('confirm-ref-edit').value = ref;
+  // Afficher le libellé correspondant
+  const art = catalogue[ref] || Object.values(catalogue).find((v, i) => Object.keys(catalogue)[i].replace(/\s+/g,'') === ref.replace(/\s+/g,''));
+  const libelle = art?.libelle;
+  document.getElementById('confirm-libelle').textContent = libelle || 'Référence inconnue';
+  document.getElementById('confirm-libelle').style.color = libelle ? 'var(--text2)' : 'var(--danger)';
   document.getElementById('confirm-overlay').classList.add('active');
   setTimeout(() => document.getElementById('confirm-ref-edit').select(), 350);
 }
