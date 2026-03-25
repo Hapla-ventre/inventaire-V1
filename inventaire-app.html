@@ -254,18 +254,20 @@ body {
 .count-line-qty {
   flex: 1; background: var(--surface); border: 1.5px solid var(--border);
   border-radius: var(--r-sm); color: var(--text);
-  font-family: var(--mono); font-size: 20px; font-weight: 500;
-  text-align: center; padding: 8px; outline: none; min-width: 0;
-  transition: border-color 0.2s;
+  font-family: var(--mono); font-size: 22px; font-weight: 500;
+  text-align: center; padding: 10px 6px; outline: none; min-width: 0;
+  transition: border-color 0.2s; -webkit-appearance: none; appearance: none;
+  cursor: text;
 }
 .count-line-qty:focus { border-color: var(--accent); }
-.count-line-x { font-family: var(--mono); font-size: 14px; color: var(--text3); flex-shrink: 0; }
+.count-line-x { font-family: var(--mono); font-size: 16px; color: var(--text3); flex-shrink: 0; padding: 0 2px; }
 .count-line-colis {
-  width: 70px; background: var(--surface); border: 1.5px solid var(--border);
+  flex: 1; background: var(--surface); border: 1.5px solid var(--border);
   border-radius: var(--r-sm); color: var(--text);
-  font-family: var(--mono); font-size: 20px; font-weight: 500;
-  text-align: center; padding: 8px; outline: none;
-  transition: border-color 0.2s;
+  font-family: var(--mono); font-size: 22px; font-weight: 500;
+  text-align: center; padding: 10px 6px; outline: none; min-width: 0;
+  transition: border-color 0.2s; -webkit-appearance: none; appearance: none;
+  cursor: text;
 }
 .count-line-colis:focus { border-color: var(--accent); }
 .count-line-sub {
@@ -884,11 +886,23 @@ async function validate() {
   const qty = parseInt(document.getElementById('final-display').textContent) || 0;
   const btn = document.getElementById('btn-validate');
   btn.disabled = true; btn.classList.add('loading');
+  // Conditionnement
+  const activeUnite = document.querySelector('.unite-btn.active');
+  const uniteVal = activeUnite ? activeUnite.dataset.val : '1';
+  let conditionnement;
+  if (uniteVal === '1') conditionnement = 'Unite';
+  else if (uniteVal === '2') conditionnement = 'Paire';
+  else {
+    const lotSize = parseInt(document.getElementById('mult-custom').value) || 1;
+    conditionnement = 'Lot de ' + lotSize;
+  }
+
   const payload = {
     action: "addScan", ref: currentRef,
     libelle: catalogue[currentRef]?.libelle || "",
-    qty, stockBefore: catalogue[currentRef]?.stock ?? null,
-    user: currentUser, zone: currentZone,
+    qty, conditionnement,
+    stockBefore: catalogue[currentRef]?.stock ?? null,
+    user: currentUser,
     timestamp: new Date().toISOString()
   };
   try {
