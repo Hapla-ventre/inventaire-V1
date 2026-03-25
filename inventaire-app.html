@@ -252,25 +252,32 @@ body {
   white-space: nowrap; flex-shrink: 0;
 }
 .cl-row {
-  display: flex; align-items: center; gap: 8px; width: 100%;
+  display: flex; align-items: flex-end; gap: 8px; width: 100%;
 }
-.cl-group {
-  flex: 1; background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-sm); padding: 8px 10px;
+.cl-group { flex: 1; }
+.cl-label {
+  display: block; font-family: var(--mono); font-size: 9px; color: var(--text3);
+  letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 5px;
 }
-.cl-label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
-.cl-ctrl { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .cl-input {
-  width: 100%; background: var(--surface2);
-  border: 1.5px solid var(--border); border-radius: 6px;
+  display: block; width: 100%;
+  background: var(--surface);
+  border: 1.5px solid var(--border); border-radius: var(--r-sm);
   color: var(--text); font-family: var(--mono);
-  font-size: 22px; font-weight: 500;
-  text-align: center; padding: 8px 4px; outline: none;
+  font-size: 24px; font-weight: 500;
+  text-align: center; padding: 10px 8px; outline: none;
   -webkit-appearance: none; appearance: none;
+  box-sizing: border-box;
 }
 .cl-input:focus { border-color: var(--accent); }
-.cl-sep { font-family: var(--mono); font-size: 18px; color: var(--text3); flex-shrink: 0; }
-.cl-sub { font-family: var(--mono); font-size: 12px; color: var(--text2); flex-shrink: 0; min-width: 36px; text-align: right; }
+.cl-sep {
+  font-family: var(--mono); font-size: 20px; color: var(--text3);
+  flex-shrink: 0; padding-bottom: 10px;
+}
+.cl-sub {
+  font-family: var(--mono); font-size: 12px; color: var(--text2);
+  flex-shrink: 0; min-width: 36px; text-align: right; padding-bottom: 12px;
+}
 .count-line-sub {
   font-family: var(--mono); font-size: 12px; color: var(--text2);
   flex-shrink: 0; min-width: 36px; text-align: right;
@@ -544,23 +551,11 @@ const CONFIG = {
 
     <div class="qty-section">
 
-      <!-- Lignes qté/colis × nb colis -->
+      <!-- Lignes de saisie qté/colis -->
       <div id="count-lines"></div>
       <button class="btn-add-line" id="btn-add-line" disabled>+ Ajouter une ligne</button>
 
-      <!-- Total des colis -->
-      <div class="total-row">
-        <div class="total-box">
-          <div class="total-label">Qté / colis</div>
-          <div class="total-val" id="total-display">0</div>
-        </div>
-        <div class="total-box">
-          <div class="total-label">Nb de colis</div>
-          <div class="total-val" id="colis-display">0</div>
-        </div>
-      </div>
-
-      <!-- Quantité finale -->
+      <!-- Total calculé -->
       <div class="final-row">
         <div class="final-label">Quantité totale envoyée</div>
         <div class="final-val" id="final-display">0</div>
@@ -783,8 +778,6 @@ function lookupRef(ref) {
     vBtn.disabled = true;
     document.getElementById('count-lines').innerHTML = '';
     document.getElementById('btn-add-line').disabled = true;
-    document.getElementById('total-display').textContent = '0';
-    document.getElementById('colis-display').textContent = '0';
     document.getElementById('final-display').textContent = '0';
     lineCount = 0;
     return;
@@ -893,8 +886,6 @@ function getMultiplier() {
 }
 
 function updateTotal() {
-  let totalQty = 0;
-  let totalColis = 0;
   let finalTotal = 0;
   document.querySelectorAll('.count-line').forEach(line => {
     const id = line.id.replace('line-', '');
@@ -903,13 +894,9 @@ function updateTotal() {
     const sub = qty * nb;
     const subEl = document.getElementById('sub-' + id);
     if (subEl) subEl.textContent = '= ' + sub;
-    totalQty   += qty;
-    totalColis += nb;
     finalTotal += sub;
   });
   const mult = getMultiplier();
-  document.getElementById('total-display').textContent = totalQty;
-  document.getElementById('colis-display').textContent = totalColis;
   document.getElementById('final-display').textContent = finalTotal * mult;
   document.getElementById('btn-validate').disabled = !currentRef;
 }
