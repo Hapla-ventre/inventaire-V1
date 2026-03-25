@@ -715,6 +715,7 @@ function init() {
     showToast('Chargement du catalogue…', '');
     loadCatalogue();
     restoreLogs();
+    enableRefreshProtection();
     document.getElementById('btn-add-line').disabled = false;
     if (document.getElementById('count-lines').children.length === 0) addCountLine();
   }
@@ -769,6 +770,7 @@ async function startSession() {
   document.getElementById('display-user').textContent = currentUser;
   sessionStorage.setItem('inv_user', currentUser);
   showScreen('screen-main');
+  enableRefreshProtection();
   // Activer les lignes de comptage dès le départ
   document.getElementById('btn-add-line').disabled = false;
   addCountLine();
@@ -1164,21 +1166,28 @@ function restoreLogs() {
   }
 }
 
-// Intercepter refresh (F5, Ctrl+R, swipe-to-refresh)
-let _refreshPending = false;
-
+// ── PROTECTION REFRESH ──
 function cancelRefresh() {
   document.getElementById('refresh-overlay').classList.remove('active');
-  _refreshPending = false;
 }
 
 function doRefresh() {
-  _refreshPending = false;
-  // On garde la session, on recharge juste la page (reste sur screen-main)
+  // Désactiver beforeunload avant de recharger
+  window.onbeforeunload = null;
   window.location.reload();
 }
 
-// Bloquer le refresh natif sur mobile (swipe) et desktop (F5/Ctrl+R)
+// beforeunload : message natif du navigateur en dernier recours
+function enableRefreshProtection() {
+  window.onbeforeunload = function(e) {
+    if (!document.getElementById('screen-main').classList.contains('active')) return;
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
+  };
+}
+
+// F5 / Ctrl+R / Cmd+R → notre modal custom
 window.addEventListener('keydown', function(e) {
   if (!document.getElementById('screen-main').classList.contains('active')) return;
   if (e.key === 'F5' || (e.ctrlKey && e.key === 'r') || (e.metaKey && e.key === 'r')) {
@@ -1187,21 +1196,21 @@ window.addEventListener('keydown', function(e) {
   }
 });
 
-// Swipe-to-refresh sur mobile (overscroll)
+// Swipe-to-refresh mobile : bloquer via touchmove non-passif + overscroll CSS
 let _touchStartY = 0;
-window.addEventListener('touchstart', e => { _touchStartY = e.touches[0].clientY; }, { passive: true });
-window.addEventListener('touchmove', e => {
+window.addEventListener('touchstart', e => {
+  _touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+window.addEventListener('touchmove', function(e) {
   if (!document.getElementById('screen-main').classList.contains('active')) return;
-  const dy = e.touches[0].clientY - _touchStartY;
-  if (dy > 60 && window.scrollY === 0) {
+  if (window.scrollY === 0 && e.touches[0].clientY - _touchStartY > 10) {
     e.preventDefault();
-    if (!document.getElementById('refresh-overlay').classList.contains('active')) {
-      document.getElementById('refresh-overlay').classList.add('active');
-    }
   }
 }, { passive: false });
 
 function confirmQuit() {
+  window.onbeforeunload = null;
   sessionStorage.clear();
   window.location.reload();
 }
