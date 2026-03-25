@@ -929,7 +929,7 @@ async function validate() {
     qty, conditionnement,
     stockBefore: catalogue[currentRef]?.stock ?? null,
     user: currentUser,
-    timestamp: new Date().toISOString()
+    timestamp: new Date(Date.now() + 3600000).toISOString().replace('T',' ').slice(0,19)
   };
   try {
     const form = new FormData();
