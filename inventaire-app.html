@@ -251,25 +251,26 @@ body {
   font-family: var(--mono); font-size: 11px; color: var(--text3);
   white-space: nowrap; flex-shrink: 0;
 }
-.count-line-qty {
-  flex: 1; background: var(--surface); border: 1.5px solid var(--border);
-  border-radius: var(--r-sm); color: var(--text);
-  font-family: var(--mono); font-size: 22px; font-weight: 500;
-  text-align: center; padding: 10px 6px; outline: none; min-width: 0;
-  transition: border-color 0.2s; -webkit-appearance: none; appearance: none;
-  cursor: text;
+.cl-row {
+  display: flex; align-items: center; gap: 8px; width: 100%;
 }
-.count-line-qty:focus { border-color: var(--accent); }
-.count-line-x { font-family: var(--mono); font-size: 16px; color: var(--text3); flex-shrink: 0; padding: 0 2px; }
-.count-line-colis {
-  flex: 1; background: var(--surface); border: 1.5px solid var(--border);
-  border-radius: var(--r-sm); color: var(--text);
-  font-family: var(--mono); font-size: 22px; font-weight: 500;
-  text-align: center; padding: 10px 6px; outline: none; min-width: 0;
-  transition: border-color 0.2s; -webkit-appearance: none; appearance: none;
-  cursor: text;
+.cl-group {
+  flex: 1; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 8px 10px;
 }
-.count-line-colis:focus { border-color: var(--accent); }
+.cl-label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+.cl-ctrl { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.cl-btn {
+  width: 36px; height: 36px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); font-size: 20px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; user-select: none;
+}
+.cl-btn:active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); transform: scale(0.9); }
+.cl-val { font-family: var(--mono); font-size: 22px; font-weight: 500; color: var(--text); min-width: 28px; text-align: center; }
+.cl-sep { font-family: var(--mono); font-size: 18px; color: var(--text3); flex-shrink: 0; }
+.cl-sub { font-family: var(--mono); font-size: 12px; color: var(--text2); flex-shrink: 0; min-width: 36px; text-align: right; }
 .count-line-sub {
   font-family: var(--mono); font-size: 12px; color: var(--text2);
   flex-shrink: 0; min-width: 36px; text-align: right;
@@ -822,16 +823,40 @@ function addCountLine() {
   const div = document.createElement('div');
   div.className = 'count-line';
   div.id = 'line-' + lineCount;
+  const n = lineCount;
   div.innerHTML = `
-    <span class="count-line-label">Colis</span>
-    <input type="number" class="count-line-qty" value="1" min="1" inputmode="numeric" placeholder="qté/colis" oninput="updateTotal()">
-    <span class="count-line-x">×</span>
-    <input type="number" class="count-line-colis" value="1" min="1" inputmode="numeric" placeholder="nb" oninput="updateTotal()">
-    <span class="count-line-sub" id="sub-${lineCount}">= 1</span>
-    <button class="btn-del-line" onclick="removeLine('line-${lineCount}')">×</button>`;
+    <div class="cl-row">
+      <div class="cl-group">
+        <div class="cl-label">Qté/colis</div>
+        <div class="cl-ctrl">
+          <button class="cl-btn" onclick="stepLine('qty',${n},-1)">−</button>
+          <span class="cl-val" id="qty-${n}">1</span>
+          <button class="cl-btn" onclick="stepLine('qty',${n},1)">+</button>
+        </div>
+      </div>
+      <div class="cl-sep">×</div>
+      <div class="cl-group">
+        <div class="cl-label">Nb colis</div>
+        <div class="cl-ctrl">
+          <button class="cl-btn" onclick="stepLine('nb',${n},-1)">−</button>
+          <span class="cl-val" id="nb-${n}">1</span>
+          <button class="cl-btn" onclick="stepLine('nb',${n},1)">+</button>
+        </div>
+      </div>
+      <div class="cl-sub" id="sub-${n}">= 1</div>
+      <button class="btn-del-line" onclick="removeLine('line-${n}')">×</button>
+    </div>`;
   container.appendChild(div);
   updateTotal();
   div.querySelector('.count-line-qty').focus();
+}
+
+function stepLine(type, n, delta) {
+  const el = document.getElementById(type + '-' + n);
+  if (!el) return;
+  const v = Math.max(1, (parseInt(el.textContent) || 1) + delta);
+  el.textContent = v;
+  updateTotal();
 }
 
 function removeLine(id) {
@@ -853,27 +878,20 @@ function getMultiplier() {
 function updateTotal() {
   let totalQty = 0;
   let totalColis = 0;
+  let finalTotal = 0;
   document.querySelectorAll('.count-line').forEach(line => {
-    const qty  = parseInt(line.querySelector('.count-line-qty').value) || 0;
-    const nb   = parseInt(line.querySelector('.count-line-colis').value) || 0;
-    const sub  = qty * nb;
-    const subEl = line.querySelectorAll('span')[2];
+    const id = line.id.replace('line-', '');
+    const qty = parseInt(document.getElementById('qty-' + id)?.textContent) || 0;
+    const nb  = parseInt(document.getElementById('nb-'  + id)?.textContent) || 0;
+    const sub = qty * nb;
+    const subEl = document.getElementById('sub-' + id);
     if (subEl) subEl.textContent = '= ' + sub;
     totalQty   += qty;
     totalColis += nb;
+    finalTotal += sub;
   });
   const mult = getMultiplier();
-  const lines = document.querySelectorAll('.count-line');
-  // Si une seule ligne, total brut = qty * nb; sinon afficher la somme
-  let finalTotal = 0;
-  document.querySelectorAll('.count-line').forEach(line => {
-    const qty = parseInt(line.querySelector('.count-line-qty').value) || 0;
-    const nb  = parseInt(line.querySelector('.count-line-colis').value) || 0;
-    finalTotal += qty * nb;
-  });
-  document.getElementById('total-display').textContent = lines.length === 1
-    ? (parseInt(document.querySelector('.count-line-qty')?.value) || 0)
-    : finalTotal;
+  document.getElementById('total-display').textContent = totalQty;
   document.getElementById('colis-display').textContent = totalColis;
   document.getElementById('final-display').textContent = finalTotal * mult;
   document.getElementById('btn-validate').disabled = !currentRef;
