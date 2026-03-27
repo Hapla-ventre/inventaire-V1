@@ -591,11 +591,18 @@ async function validate(){
   const lignes=[];
   document.querySelectorAll('.count-line').forEach(line=>{
     const id=line.id.replace('line-','');
-    const qc=parseInt(document.getElementById('qty-'+id)?.value)||0;
-    const nc=parseInt(document.getElementById('nb-'+id)?.value)||0;
-    if(qc>0&&nc>0)lignes.push(nc+' colis de '+qc);
+    const elQty=document.getElementById('qty-'+id);
+    const elNb=document.getElementById('nb-'+id);
+    const qc=parseInt(elQty?.value||elQty?.defaultValue)||1;
+    const nc=parseInt(elNb?.value||elNb?.defaultValue)||1;
+    lignes.push(nc+' colis de '+qc);
   });
 
+  // Fallback si aucune ligne remplie
+  if(lignes.length===0){
+    const firstQty=parseInt(document.querySelector('.cl-input')?.value)||1;
+    lignes.push('1 colis de '+firstQty);
+  }
   const ref=currentRef||'???';
   const libelle=catalogue[ref]?.libelle||'';
   const payload={
