@@ -459,14 +459,16 @@ async function loadCatalogue(){
       const cell=row.c[CONFIG.COL_REF];
       if(!cell)return;
       const raw=cell.v??cell.f??cell.label??"";
-      const ref=raw.toString().trim().toUpperCase();
+      // Les refs numériques peuvent arriver comme float (ex: 451485.0)
+      const ref=Number.isInteger(raw) ? String(raw) : Math.floor(raw)===raw && typeof raw==='number' ? String(Math.floor(raw)) : raw.toString().trim().toUpperCase();
       const lc=row.c[CONFIG.COL_LIBELLE];
       const libelle=(lc?.v??lc?.f??"").toString().trim();
       const sc=row.c[CONFIG.COL_STOCK];
       const stock=sc?.v??null;
       if(ref)catalogue[ref]={libelle,stock};
     });
-    showToast(`${Object.keys(catalogue).length} références chargées`,'success');
+    const keys = Object.keys(catalogue);
+    showToast(`${keys.length} références chargées`,'success');
   }catch(e){showToast('Catalogue non chargé — saisie manuelle possible','warn');}
 }
 
@@ -607,15 +609,11 @@ async function validate(){
   const libelle=catalogue[ref]?.libelle||'';
   const payload={
     action:"addScan",ref,libelle,qty,conditionnement,
-    detailComptage:lignes.join('\n'),
+    detailComptage:lignes.join(' | '),
     stockBefore:catalogue[ref]?.stock??null,
     user:currentUser,
     timestamp:new Date(Date.now()+3600000).toISOString().replace('T',' ').slice(0,19)
   };
-
-  // DEBUG TEMPORAIRE
-  showToast('detail: '+lignes.join(' | ')+' / cond: '+conditionnement, '');
-  console.log('PAYLOAD:', JSON.stringify({detailComptage:lignes.join('\n'), conditionnement, qty, ref}));
 
   const localId=Date.now()+Math.random().toString(36).slice(2);
   const name=libelle||ref;
