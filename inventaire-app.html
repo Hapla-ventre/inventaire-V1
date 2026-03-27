@@ -325,9 +325,13 @@ const QUEUE_KEY='inv_queue';
 function getQueue(){try{return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');}catch{return[];}}
 function saveQueue(q){localStorage.setItem(QUEUE_KEY,JSON.stringify(q));}
 async function sendPayload(payload){
-  const form=new FormData();
-  form.append("data",JSON.stringify(payload));
-  await fetch(CONFIG.APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",body:form});
+  const body=JSON.stringify(payload);
+  await fetch(CONFIG.APPS_SCRIPT_URL,{
+    method:"POST",
+    mode:"no-cors",
+    headers:{"Content-Type":"text/plain"},
+    body:body
+  });
 }
 async function flushQueue(){
   const q=getQueue();
