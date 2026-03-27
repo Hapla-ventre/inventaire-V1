@@ -1047,22 +1047,6 @@ async function sendPayload(payload) {
   form.append("data", JSON.stringify(payload));
   await fetch(CONFIG.APPS_SCRIPT_URL, { method: "POST", mode: "no-cors", body: form });
 }
-async function flushQueue() {
-  const q = getQueue();
-  if (!q.length) return;
-  const remaining = [];
-  for (const item of q) {
-    try {
-      await sendPayload(item.payload);
-      const el = document.getElementById('log-' + item.localId);
-      if (el) { el.classList.remove('log-pending'); el.querySelector('.log-badge')?.remove(); }
-    } catch { remaining.push(item); }
-  }
-  saveQueue(remaining);
-  if (remaining.length < q.length) showToast((q.length - remaining.length) + ' en attente envoyée(s)', 'success');
-}
-setInterval(() => { if (navigator.onLine) flushQueue(); }, 10000);
-window.addEventListener('online', flushQueue);
 
 async function validate() {
   if (!currentRef) return;
