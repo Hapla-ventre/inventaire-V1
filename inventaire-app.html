@@ -616,6 +616,7 @@ async function validate(){
     const firstQty=parseInt(document.querySelector('.cl-input')?.value)||1;
     lignes.push('1 colis de '+firstQty);
   }
+  alert('lignes=['+lignes.join('|')+'] qty='+qty);
   const ref=currentRef||'???';
   const libelle=catalogue[ref]?.libelle||'';
   const payload={
@@ -628,6 +629,7 @@ async function validate(){
 
   const localId=Date.now()+Math.random().toString(36).slice(2);
   const name=libelle||ref;
+  alert('detail: [' + lignes.join('|') + '] qty:' + qty);
   if(navigator.onLine){
     try{
       await sendPayload(payload);
