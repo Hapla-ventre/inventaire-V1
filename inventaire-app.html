@@ -715,6 +715,51 @@ let catalogue = {}, currentRef = null;
 let scanCount = 0, camStream = null;
 let ocrWorker = null, ocrReady = false, isScanning = false;
 
+// ── CACHE HORS-LIGNE ──
+const QUEUE_KEY = 'inv_queue';
+
+function getQueue() {
+  try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch { return []; }
+}
+
+function saveQueue(q) {
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+}
+
+async function sendPayload(payload) {
+  const form = new FormData();
+  form.append("data", JSON.stringify(payload));
+  const res = await fetch(CONFIG.APPS_SCRIPT_URL, { method: "POST", mode: "no-cors", body: form });
+  return true;
+}
+
+async function flushQueue() {
+  const q = getQueue();
+  if (q.length === 0) return;
+  const remaining = [];
+  for (const item of q) {
+    try {
+      await sendPayload(item.payload);
+      // Marquer comme envoyé dans le log visuel
+      const el = document.getElementById('log-' + item.localId);
+      if (el) {
+        el.classList.remove('log-pending');
+        el.querySelector('.log-status')?.remove();
+      }
+    } catch {
+      remaining.push(item);
+    }
+  }
+  saveQueue(remaining);
+  if (remaining.length === 0 && q.length > 0) {
+    showToast(q.length + ' en attente envoyées', 'success');
+  }
+}
+
+// Tentative d'envoi toutes les 10s
+setInterval(() => { if (navigator.onLine) flushQueue(); }, 10000);
+window.addEventListener('online', flushQueue);
+
 function init() {
   const sel = document.getElementById('user-select');
   CONFIG.USERS.forEach(u => {
@@ -992,50 +1037,6 @@ function updateTotal() {
 
 function adjustQty(d) {} // conservé pour compatibilité
 
-// ── CACHE HORS-LIGNE ──
-const QUEUE_KEY = 'inv_queue';
-
-function getQueue() {
-  try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch { return []; }
-}
-
-function saveQueue(q) {
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
-}
-
-async function sendPayload(payload) {
-  const form = new FormData();
-  form.append("data", JSON.stringify(payload));
-  const res = await fetch(CONFIG.APPS_SCRIPT_URL, { method: "POST", mode: "no-cors", body: form });
-  return true;
-}
-
-async function flushQueue() {
-  const q = getQueue();
-  if (q.length === 0) return;
-  const remaining = [];
-  for (const item of q) {
-    try {
-      await sendPayload(item.payload);
-      // Marquer comme envoyé dans le log visuel
-      const el = document.getElementById('log-' + item.localId);
-      if (el) {
-        el.classList.remove('log-pending');
-        el.querySelector('.log-status')?.remove();
-      }
-    } catch {
-      remaining.push(item);
-    }
-  }
-  saveQueue(remaining);
-  if (remaining.length === 0 && q.length > 0) {
-    showToast(q.length + ' en attente envoyées', 'success');
-  }
-}
-
-// Tentative d'envoi toutes les 10s
-setInterval(() => { if (navigator.onLine) flushQueue(); }, 10000);
-window.addEventListener('online', flushQueue);
 
 // ── CACHE HORS-LIGNE ──
 const QUEUE_KEY = 'inv_queue';
