@@ -467,8 +467,7 @@ async function loadCatalogue(){
       const cell=row.c[CONFIG.COL_REF];
       if(!cell)return;
       const raw=cell.v??cell.f??cell.label??"";
-      // Les refs numériques peuvent arriver comme float (ex: 451485.0)
-      const ref=Number.isInteger(raw) ? String(raw) : Math.floor(raw)===raw && typeof raw==='number' ? String(Math.floor(raw)) : raw.toString().trim().toUpperCase();
+      const ref=raw.toString().replace(/\.0$/, '').trim().toUpperCase();
       const lc=row.c[CONFIG.COL_LIBELLE];
       const libelle=(lc?.v??lc?.f??"").toString().trim();
       const sc=row.c[CONFIG.COL_STOCK];
