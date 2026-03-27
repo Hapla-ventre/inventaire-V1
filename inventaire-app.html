@@ -190,7 +190,10 @@ const CONFIG = {
       <div class="user-dot"></div>
       <span class="user-name" id="display-user">—</span>
     </div>
-    <div class="stat-pill"><span id="stat-count">0</span> validées</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <div class="stat-pill"><span id="stat-count">0</span> validées</div>
+      <button onclick="viderCache()" style="font-family:var(--mono);font-size:10px;background:var(--danger-dim);border:1px solid var(--danger);color:var(--danger);border-radius:20px;padding:4px 10px;cursor:pointer;">Vider cache</button>
+    </div>
   </div>
   <div class="main-content">
     <div>
@@ -359,6 +362,11 @@ function enableRefreshProtection(){
 }
 function cancelRefresh(){document.getElementById('refresh-overlay').classList.remove('active');}
 function doRefresh(){window.onbeforeunload=null;window.location.reload();}
+function viderCache() {
+  localStorage.removeItem('inv_queue');
+  showToast('Cache vidé', 'success');
+}
+
 function confirmQuit(){window.onbeforeunload=null;sessionStorage.clear();window.location.reload();}
 window.addEventListener('keydown',function(e){
   if(!document.getElementById('screen-main').classList.contains('active'))return;
