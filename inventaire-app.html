@@ -575,7 +575,7 @@ function updateTotal(){
 
 // ── VALIDATE ──
 async function validate(){
-  const qty=parseInt(document.getElementById('final-display').textContent)||0;
+  let qty=0; // sera calculé ci-dessous avec qtyTotal
   const btn=document.getElementById('btn-validate');
   btn.disabled=true;btn.classList.add('loading');
 
@@ -597,15 +597,19 @@ async function validate(){
   else if(uniteVal==='2')conditionnement='Paire';
   else conditionnement='Lot de '+parseInt(document.getElementById('mult-custom').value);
 
+  // Lire les inputs directement depuis le DOM sans passer par ID
   const lignes=[];
-  document.querySelectorAll('.count-line').forEach(line=>{
-    const id=line.id.replace('line-','');
-    const elQty=document.getElementById('qty-'+id);
-    const elNb=document.getElementById('nb-'+id);
-    const qc=parseInt(elQty?.value||elQty?.defaultValue)||1;
-    const nc=parseInt(elNb?.value||elNb?.defaultValue)||1;
+  let qtyTotal=0;
+  const lineEls=document.querySelectorAll('#count-lines .count-line');
+  lineEls.forEach(line=>{
+    const inputs=line.querySelectorAll('input.cl-input');
+    const qc=Math.max(1, parseInt(inputs[0]?.value)||1);
+    const nc=Math.max(1, parseInt(inputs[1]?.value)||1);
     lignes.push(nc+' colis de '+qc);
+    qtyTotal+=qc*nc;
   });
+  if(lignes.length===0){lignes.push('1 colis de 1');qtyTotal=1;}
+  qty=qtyTotal;
 
   // Fallback si aucune ligne remplie
   if(lignes.length===0){
