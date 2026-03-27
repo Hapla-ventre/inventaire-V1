@@ -613,6 +613,10 @@ async function validate(){
     timestamp:new Date(Date.now()+3600000).toISOString().replace('T',' ').slice(0,19)
   };
 
+  // DEBUG TEMPORAIRE
+  showToast('detail: '+lignes.join(' | ')+' / cond: '+conditionnement, '');
+  console.log('PAYLOAD:', JSON.stringify({detailComptage:lignes.join('\n'), conditionnement, qty, ref}));
+
   const localId=Date.now()+Math.random().toString(36).slice(2);
   const name=libelle||ref;
   if(navigator.onLine){
