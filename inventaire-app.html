@@ -212,6 +212,21 @@ body {
 }
 .qty-input:focus { border-color: var(--accent); }
 
+.suggestions {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-sm); overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.suggestion-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.suggestion-item:last-child { border-bottom: none; }
+.suggestion-item:active { background: var(--accent-dim); }
+.suggestion-ref { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--accent); flex-shrink: 0; }
+.suggestion-name { font-size: 12px; color: var(--text2); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 .btn-validate {
   width: 100%; background: var(--accent); color: #ffffff;
   border: none; border-radius: var(--r-sm);
@@ -237,6 +252,12 @@ body {
 .log-name { font-size: 12px; color: var(--text2); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .log-qty { font-family: var(--mono); font-size: 13px; font-weight: 500; flex-shrink: 0; }
 .log-time { font-family: var(--mono); font-size: 10px; color: var(--text3); flex-shrink: 0; }
+.log-pending { opacity: 0.5; border-style: dashed; }
+.log-badge {
+  font-family: var(--mono); font-size: 9px; color: var(--warn);
+  background: var(--warn-dim); border: 1px solid var(--warn);
+  border-radius: 10px; padding: 2px 6px; flex-shrink: 0; white-space: nowrap;
+}
 
 /* Lignes de comptage */
 .btn-add-line {
@@ -517,7 +538,7 @@ const CONFIG = {
       <div class="user-dot"></div>
       <span class="user-name" id="display-user">—</span>
     </div>
-    <div class="stat-pill"><span id="stat-count">0</span> scannés</div>
+    <div class="stat-pill"><span id="stat-count">0</span> validées</div>
   </div>
 
   <div class="main-content">
@@ -587,7 +608,7 @@ const CONFIG = {
     <div class="divider"></div>
 
     <div>
-      <div class="log-header">Scans de cette session</div>
+      <div class="log-header">Références validées cette session</div>
       <div id="log-list"></div>
     </div>
 
@@ -730,7 +751,12 @@ function init() {
 
   document.getElementById('ref-input').addEventListener('input', e => {
     clearTimeout(window._rd);
-    window._rd = setTimeout(() => lookupRef(e.target.value.trim().toUpperCase()), 280);
+    const val = e.target.value.trim().toUpperCase();
+    window._rd = setTimeout(() => lookupRef(val), 280);
+    showSuggestions(val);
+  });
+  document.getElementById('ref-input').addEventListener('blur', () => {
+    setTimeout(() => hideSuggestions(), 200);
   });
   document.getElementById('ref-input').addEventListener('keydown', e => {
     // Enter dans ref-input ne déplace pas le focus
@@ -748,6 +774,8 @@ function init() {
   });
   document.getElementById('mult-custom').addEventListener('input', updateTotal);
   document.getElementById('btn-cam').addEventListener('click', openCamera);
+  // Tenter de vider la file dès l'ouverture
+  if (navigator.onLine) setTimeout(flushQueue, 2000);
   document.getElementById('cam-close').addEventListener('click', closeCamera);
 
   const scanBtn = document.getElementById('cam-scan-btn');
@@ -801,6 +829,30 @@ async function loadCatalogue() {
   } catch (e) {
     showToast('Catalogue non chargé — saisie manuelle possible', 'warn');
   }
+}
+
+function showSuggestions(val) {
+  const box = document.getElementById('suggestions');
+  if (!val || val.length < 2) { box.style.display = 'none'; return; }
+  const keys = Object.keys(catalogue);
+  const matches = keys.filter(k => k.includes(val) || catalogue[k].libelle.toUpperCase().includes(val)).slice(0, 3);
+  if (!matches.length) { box.style.display = 'none'; return; }
+  box.innerHTML = matches.map(k => `
+    <div class="suggestion-item" onmousedown="pickSuggestion('${k}')">
+      <span class="suggestion-ref">${k}</span>
+      <span class="suggestion-name">${catalogue[k].libelle}</span>
+    </div>`).join('');
+  box.style.display = 'block';
+}
+
+function hideSuggestions() {
+  document.getElementById('suggestions').style.display = 'none';
+}
+
+function pickSuggestion(ref) {
+  document.getElementById('ref-input').value = ref;
+  hideSuggestions();
+  lookupRef(ref);
 }
 
 function lookupRef(ref) {
@@ -940,6 +992,77 @@ function updateTotal() {
 
 function adjustQty(d) {} // conservé pour compatibilité
 
+// ── CACHE HORS-LIGNE ──
+const QUEUE_KEY = 'inv_queue';
+
+function getQueue() {
+  try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch { return []; }
+}
+
+function saveQueue(q) {
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+}
+
+async function sendPayload(payload) {
+  const form = new FormData();
+  form.append("data", JSON.stringify(payload));
+  const res = await fetch(CONFIG.APPS_SCRIPT_URL, { method: "POST", mode: "no-cors", body: form });
+  return true;
+}
+
+async function flushQueue() {
+  const q = getQueue();
+  if (q.length === 0) return;
+  const remaining = [];
+  for (const item of q) {
+    try {
+      await sendPayload(item.payload);
+      // Marquer comme envoyé dans le log visuel
+      const el = document.getElementById('log-' + item.localId);
+      if (el) {
+        el.classList.remove('log-pending');
+        el.querySelector('.log-status')?.remove();
+      }
+    } catch {
+      remaining.push(item);
+    }
+  }
+  saveQueue(remaining);
+  if (remaining.length === 0 && q.length > 0) {
+    showToast(q.length + ' en attente envoyées', 'success');
+  }
+}
+
+// Tentative d'envoi toutes les 10s
+setInterval(() => { if (navigator.onLine) flushQueue(); }, 10000);
+window.addEventListener('online', flushQueue);
+
+// ── CACHE HORS-LIGNE ──
+const QUEUE_KEY = 'inv_queue';
+function getQueue() { try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch { return []; } }
+function saveQueue(q) { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
+async function sendPayload(payload) {
+  const form = new FormData();
+  form.append("data", JSON.stringify(payload));
+  await fetch(CONFIG.APPS_SCRIPT_URL, { method: "POST", mode: "no-cors", body: form });
+}
+async function flushQueue() {
+  const q = getQueue();
+  if (!q.length) return;
+  const remaining = [];
+  for (const item of q) {
+    try {
+      await sendPayload(item.payload);
+      const el = document.getElementById('log-' + item.localId);
+      if (el) { el.classList.remove('log-pending'); el.querySelector('.log-badge')?.remove(); }
+    } catch { remaining.push(item); }
+  }
+  saveQueue(remaining);
+  if (remaining.length < q.length) showToast((q.length - remaining.length) + ' en attente envoyée(s)', 'success');
+}
+setInterval(() => { if (navigator.onLine) flushQueue(); }, 10000);
+window.addEventListener('online', flushQueue);
+
 async function validate() {
   if (!currentRef) return;
   const qty = parseInt(document.getElementById('final-display').textContent) || 0;
@@ -974,10 +1097,22 @@ async function validate() {
     conditionnement = 'Lot de ' + lotSize;
   }
 
+  // Construire le détail du comptage
+  const lignesDetail = [];
+  document.querySelectorAll('.count-line').forEach(line => {
+    const id = line.id.replace('line-', '');
+    const qty_c = parseInt(document.getElementById('qty-' + id)?.value) || 0;
+    const nb_c  = parseInt(document.getElementById('nb-'  + id)?.value) || 0;
+    if (qty_c > 0 && nb_c > 0) {
+      lignesDetail.push(nb_c + ' colis de ' + qty_c);
+    }
+  });
+  const detailComptage = lignesDetail.join('\n');
+
   const payload = {
     action: "addScan", ref: currentRef,
     libelle: catalogue[currentRef]?.libelle || "",
-    qty, conditionnement,
+    qty, conditionnement, detailComptage,
     stockBefore: catalogue[currentRef]?.stock ?? null,
     user: currentUser,
     timestamp: new Date(Date.now() + 3600000).toISOString().replace('T',' ').slice(0,19)
@@ -1017,13 +1152,20 @@ function resetScan() {
   document.getElementById('mult-custom').value = '';
   // Focus sur ref-input pour scan suivant
   document.getElementById('ref-input').focus();
+  hideSuggestions();
 }
 
-function addLog(ref, name, qty) {
+function addLog(localId, ref, name, qty, pending = false) {
   const time = new Date().toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
   const item = document.createElement('div');
-  item.className = 'log-item';
-  item.innerHTML = `<span class="log-ref">${ref}</span><span class="log-name">${name}</span><span class="log-qty">${qty}</span><span class="log-time">${time}</span>`;
+  item.className = 'log-item' + (pending ? ' log-pending' : '');
+  item.id = 'log-' + localId;
+  item.innerHTML = `
+    <span class="log-ref">${ref}</span>
+    <span class="log-name">${name}</span>
+    <span class="log-qty">${qty}</span>
+    <span class="log-time">${time}</span>
+    ${pending ? '<span class="log-badge">en attente</span>' : ''}`;
   document.getElementById('log-list').prepend(item);
 }
 
