@@ -328,15 +328,12 @@ const QUEUE_KEY='inv_queue';
 function getQueue(){try{return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');}catch{return[];}}
 function saveQueue(q){localStorage.setItem(QUEUE_KEY,JSON.stringify(q));}
 async function sendPayload(payload){
+  // Remplacer \n par [NL] pour éviter que le saut de ligne casse le JSON en transit
+  const safe = Object.assign({}, payload, {
+    detailComptage: (payload.detailComptage || "").replace(/\n/g, "[NL]")
+  });
   const form=new FormData();
-  form.append("ref",          payload.ref || "");
-  form.append("libelle",      payload.libelle || "");
-  form.append("qty",          String(payload.qty || 0));
-  form.append("detailComptage", payload.detailComptage || "");
-  form.append("conditionnement", payload.conditionnement || "");
-  form.append("user",         payload.user || "");
-  form.append("timestamp",    payload.timestamp || "");
-  form.append("stockBefore",  String(payload.stockBefore ?? ""));
+  form.append("data", JSON.stringify(safe));
   await fetch(CONFIG.APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",body:form});
 }
 async function flushQueue(){
