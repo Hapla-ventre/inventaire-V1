@@ -123,20 +123,20 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 #cam-canvas{display:none;}
 .cam-ui{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
 .cam-viewfinder{width:min(280px,80vw);height:72px;position:relative;}
-.cam-viewfinder-inner{position:absolute;inset:0;border:2px solid #00e5a0;border-radius:10px;box-shadow:0 0 0 4000px rgba(0,0,0,0.6);}
+.cam-viewfinder-inner{position:absolute;inset:0;border:2px solid #1a6fe8;border-radius:10px;box-shadow:0 0 0 4000px rgba(0,0,0,0.6);}
 .cam-viewfinder-inner::before,.cam-viewfinder-inner::after{content:'';position:absolute;width:18px;height:18px;border-color:#fff;border-style:solid;}
 .cam-viewfinder-inner::before{top:-2px;left:-2px;border-width:3px 0 0 3px;border-radius:4px 0 0 0;}
 .cam-viewfinder-inner::after{bottom:-2px;right:-2px;border-width:0 3px 3px 0;border-radius:0 0 4px 0;}
-.cam-scanline{position:absolute;left:4px;right:4px;height:2px;background:linear-gradient(90deg,transparent,#00e5a0,transparent);animation:scanline 1.8s ease-in-out infinite;}
+.cam-scanline{position:absolute;left:4px;right:4px;height:2px;background:linear-gradient(90deg,transparent,#1a6fe8,transparent);animation:scanline 1.8s ease-in-out infinite;}
 @keyframes scanline{0%{top:10%;opacity:0}20%{opacity:1}80%{opacity:1}100%{top:90%;opacity:0}}
 .cam-hint{margin-top:20px;font-family:var(--mono);font-size:12px;letter-spacing:0.1em;color:rgba(255,255,255,0.55);}
 .cam-scan-btn{position:absolute;bottom:48px;left:50%;transform:translateX(-50%);width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:none;}
-.cam-scan-btn.scanning{background:#00e5a0;border-color:#00e5a0;transform:translateX(-50%) scale(0.93);}
+.cam-scan-btn.scanning{background:#1a6fe8;border-color:#1a6fe8;transform:translateX(-50%) scale(0.93);}
 .cam-scan-btn svg{width:28px;height:28px;color:#fff;}
-.cam-scan-btn.scanning svg{color:#050f09;}
+.cam-scan-btn.scanning svg{color:#fff;}
 .cam-close{position:absolute;top:20px;right:16px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.15);border-radius:50%;width:40px;height:40px;color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
 .cam-status{position:absolute;top:20px;left:16px;font-family:var(--mono);font-size:11px;color:rgba(255,255,255,0.5);background:rgba(0,0,0,0.4);padding:6px 10px;border-radius:20px;}
-.cam-status.ready{color:#00e5a0;}
+.cam-status.ready{color:#1a6fe8;}
 .confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:250;align-items:flex-end;justify-content:center;}
 .confirm-overlay.active{display:flex;}
 .confirm-sheet{width:100%;max-width:480px;background:var(--surface);border-radius:20px 20px 0 0;border-top:1px solid var(--border);padding:20px 20px 32px;animation:slideUp 0.3s cubic-bezier(0.34,1.4,0.64,1);}
@@ -190,7 +190,7 @@ const CONFIG = {
       <div class="user-dot"></div>
       <span class="user-name" id="display-user">—</span>
     </div>
-    <div class="stat-pill"><span id="stat-count">0</span> validées</div>
+    <div class="stat-pill"><span id="stat-count">0</span> références comptées</div>
   </div>
   <div class="main-content">
     <div>
@@ -399,7 +399,7 @@ function init(){
     history.replaceState({screen:'main'},'');
     enableRefreshProtection();
     showToast('Chargement du catalogue…','');
-    loadCatalogue();
+    loadCatalogue().then(loadUserCount);
     restoreLogs();
     addCountLine();
     if(navigator.onLine)setTimeout(flushQueue,2000);
@@ -449,10 +449,33 @@ async function startSession(){
   enableRefreshProtection();
   showToast('Chargement du catalogue…','');
   await loadCatalogue();
+  await loadUserCount();
   if(navigator.onLine)setTimeout(flushQueue,1000);
 }
 
 // ── CATALOGUE ──
+async function loadUserCount(){
+  const sheetName="Inventaire V1";
+  const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(sheetName)}`;
+  try{
+    const res=await fetch(url);
+    const text=await res.text();
+    const match=text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
+    if(!match)return;
+    const json=JSON.parse(match[1]);
+    const rows=json.table.rows||[];
+    // Colonne H = index 7
+    const count=rows.filter(row=>{
+      if(!row||!row.c||!row.c[7])return false;
+      const val=(row.c[7].v||row.c[7].f||'').toString().trim();
+      return val===currentUser;
+    }).length;
+    scanCount=count;
+    document.getElementById('stat-count').textContent=scanCount;
+    sessionStorage.setItem('inv_count',scanCount);
+  }catch(e){}
+}
+
 async function loadCatalogue(){
   const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(CONFIG.SHEET_CATALOGUE)}`;
   try{
