@@ -423,10 +423,6 @@ function showAdminBanner(){
   const banner = document.getElementById('admin-banner');
   if(perm === 'administrateur'){
     banner.style.display = 'block';
-    // Demander permission notifications
-    if('Notification' in window && Notification.permission === 'default'){
-      Notification.requestPermission();
-    }
     // Vérifier suspects en arrière-plan toutes les 60s
     if(!window._notifCheck){
       window._notifCheck = setInterval(checkSuspectsNotif, 60000);
@@ -471,6 +467,12 @@ async function checkSuspectsNotif(){
 
 function goAdmin(){
   showScreen('screen-admin');
+  // Demander permission notifications sur action utilisateur (tap)
+  if('Notification' in window && Notification.permission === 'default'){
+    Notification.requestPermission().then(perm => {
+      if(perm === 'granted') showToast('Notifications activées', 'success');
+    });
+  }
   loadSuspects();
   if(window._adminRefresh) clearInterval(window._adminRefresh);
   window._adminRefresh = setInterval(()=>{
