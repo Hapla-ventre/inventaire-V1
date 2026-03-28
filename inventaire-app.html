@@ -617,7 +617,7 @@ async function validate(){
   const libelle=catalogue[ref]?.libelle||'';
   const payload={
     action:"addScan",ref,libelle,qty,conditionnement,
-    detailComptage:lignes.join(' | '),
+    detailComptage:lignes.join('\n'),
     stockBefore:catalogue[ref]?.stock??null,
     user:currentUser,
     timestamp:new Date(Date.now()+3600000).toISOString().replace('T',' ').slice(0,19)
