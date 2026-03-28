@@ -112,6 +112,45 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .loading .spinner{display:block;}
 .loading .btn-text{display:none;}
 @keyframes spin{to{transform:rotate(360deg);}}
+.admin-banner {
+  background: var(--accent); color: #fff;
+  padding: 10px 16px; text-align: center;
+  font-family: var(--mono); font-size: 12px; font-weight: 500;
+  letter-spacing: 0.08em; cursor: pointer;
+  transition: opacity 0.15s;
+}
+.admin-banner:active { opacity: 0.82; }
+.admin-banner.back { background: var(--surface2); color: var(--accent); border-bottom: 1px solid var(--border); }
+
+#screen-admin.active { display: block; }
+.admin-topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: var(--accent); color: #fff;
+  padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;
+}
+.admin-topbar-title { font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: 0.08em; }
+.admin-topbar-back { font-family: var(--mono); font-size: 11px; cursor: pointer; opacity: 0.85; padding: 4px 10px; border: 1px solid rgba(255,255,255,0.4); border-radius: 20px; }
+.admin-topbar-back:active { opacity: 0.6; }
+.admin-content { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.admin-section-title { font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; color: var(--text3); text-transform: uppercase; }
+.suspect-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 4px;
+  animation: slideIn 0.2s ease;
+}
+.suspect-item.high { border-color: var(--danger); background: var(--danger-dim); }
+.suspect-item.medium { border-color: var(--warn); background: var(--warn-dim); }
+.suspect-ref { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--text); }
+.suspect-name { font-size: 12px; color: var(--text2); }
+.suspect-row { display: flex; gap: 12px; align-items: center; margin-top: 4px; }
+.suspect-delta { font-family: var(--mono); font-size: 14px; font-weight: 500; }
+.suspect-delta.pos { color: var(--danger); }
+.suspect-delta.neg { color: var(--accent); }
+.suspect-stocks { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+.suspect-user { font-size: 11px; color: var(--text2); margin-left: auto; }
+.admin-empty { text-align: center; color: var(--text2); font-size: 14px; padding: 40px 0; }
+
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface);border:1px solid var(--border);border-radius:40px;padding:11px 20px;font-size:14px;color:var(--text);white-space:nowrap;transition:transform 0.28s cubic-bezier(0.34,1.56,0.64,1);z-index:300;pointer-events:none;max-width:calc(100vw - 40px);box-shadow:0 4px 16px rgba(0,0,0,0.12);}
 .toast.show{transform:translateX(-50%) translateY(0);}
 .toast.success{background:rgba(26,138,58,0.1);border-color:var(--found);color:var(--found);}
@@ -185,6 +224,9 @@ const CONFIG = {
 
 <!-- PRINCIPAL -->
 <div id="screen-main" class="screen">
+  <div id="admin-banner" class="admin-banner" style="display:none;" onclick="goAdmin()">
+    Mode administrateur →
+  </div>
   <div class="topbar">
     <div class="topbar-user">
       <div class="user-dot"></div>
@@ -245,6 +287,19 @@ const CONFIG = {
       <div class="log-header">Références validées cette session</div>
       <div id="log-list"></div>
     </div>
+  </div>
+</div>
+
+<!-- ÉCRAN ADMIN -->
+<div id="screen-admin" class="screen">
+  <div class="admin-topbar">
+    <span class="admin-topbar-title">Mode administrateur</span>
+    <span class="admin-topbar-back" onclick="leaveAdmin()">← Retour scan</span>
+  </div>
+  <div class="admin-content">
+    <div class="admin-section-title">Comptages suspects</div>
+    <div id="suspect-threshold" style="font-size:12px;color:var(--text2);margin-top:-4px;"></div>
+    <div id="suspect-list"><div class="admin-empty">Chargement…</div></div>
   </div>
 </div>
 
@@ -360,6 +415,102 @@ function viderCache() {
   showToast('Cache vidé', 'success');
 }
 
+// ── ADMIN ──
+let adminThreshold = 20; // % par défaut
+
+function showAdminBanner(){
+  const perm = sessionStorage.getItem('inv_perm') || '';
+  const banner = document.getElementById('admin-banner');
+  if(perm === 'administrateur') banner.style.display = 'block';
+  else banner.style.display = 'none';
+}
+
+function goAdmin(){
+  showScreen('screen-admin');
+  loadSuspects();
+}
+
+function leaveAdmin(){
+  showScreen('screen-main');
+}
+
+async function loadSuspects(){
+  const list = document.getElementById('suspect-list');
+  list.innerHTML = '<div class="admin-empty">Chargement…</div>';
+
+  try{
+    // Lire le seuil depuis K2 de l'onglet Réglages
+    const urlR = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=0&sheet=R%C3%A9glages`;
+    const resR = await fetch(urlR);
+    const textR = await resR.text();
+    const matchR = textR.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
+    if(matchR){
+      const jsonR = JSON.parse(matchR[1]);
+      const k2 = jsonR.table?.rows?.[1]?.c?.[10]?.v;
+      if(k2 !== null && k2 !== undefined) adminThreshold = Number(k2);
+    }
+    document.getElementById('suspect-threshold').textContent =
+      `Seuil configuré : ±${adminThreshold}% (cellule K2 de l'onglet Réglages)`;
+
+    // Lire l'inventaire
+    const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=Inventaire%20V1`;
+    const res = await fetch(url);
+    const text = await res.text();
+    const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
+    if(!match) throw new Error('no match');
+    const json = JSON.parse(match[1]);
+    const rows = json.table.rows || [];
+
+    const suspects = [];
+    rows.forEach(row => {
+      if(!row || !row.c) return;
+      const ref        = (row.c[0]?.v ?? row.c[0]?.f ?? '').toString().trim();
+      const name       = (row.c[1]?.v ?? row.c[1]?.f ?? '').toString().trim();
+      const stockAvant = row.c[2]?.v;
+      const stockApres = row.c[3]?.v;
+      const user       = (row.c[7]?.v ?? row.c[7]?.f ?? '').toString().trim();
+
+      if(!ref || stockAvant === null || stockAvant === undefined) return;
+      if(stockApres === null || stockApres === undefined) return;
+      if(stockAvant === 0) return;
+
+      const delta = ((stockApres - stockAvant) / stockAvant) * 100;
+      if(Math.abs(delta) >= adminThreshold){
+        suspects.push({ ref, name, stockAvant, stockApres, delta, user });
+      }
+    });
+
+    if(suspects.length === 0){
+      list.innerHTML = '<div class="admin-empty">Aucun comptage suspect 🎉</div>';
+      return;
+    }
+
+    // Trier par delta absolu décroissant
+    suspects.sort((a,b) => Math.abs(b.delta) - Math.abs(a.delta));
+
+    list.innerHTML = '';
+    suspects.forEach(s => {
+      const item = document.createElement('div');
+      const level = Math.abs(s.delta) >= adminThreshold * 2 ? 'high' : 'medium';
+      item.className = 'suspect-item ' + level;
+      const sign = s.delta > 0 ? '+' : '';
+      const cls  = s.delta > 0 ? 'pos' : 'neg';
+      item.innerHTML = `
+        <div class="suspect-ref">${s.ref}</div>
+        <div class="suspect-name">${s.name}</div>
+        <div class="suspect-row">
+          <span class="suspect-delta ${cls}">${sign}${s.delta.toFixed(1)}%</span>
+          <span class="suspect-stocks">${s.stockAvant} → ${s.stockApres}</span>
+          <span class="suspect-user">${s.user}</span>
+        </div>`;
+      list.appendChild(item);
+    });
+
+  }catch(err){
+    list.innerHTML = '<div class="admin-empty">Erreur de chargement</div>';
+  }
+}
+
 function confirmQuit(){window.onbeforeunload=null;sessionStorage.clear();window.location.reload();}
 window.addEventListener('keydown',function(e){
   if(!document.getElementById('screen-main').classList.contains('active'))return;
@@ -460,6 +611,7 @@ async function loadUsers(){
       showScreen('screen-main');
       history.replaceState({screen:'main'},'');
       enableRefreshProtection();
+      showAdminBanner();
       showToast('Chargement du catalogue…','');
       loadCatalogue().then(loadUserCount);
       restoreLogs();
@@ -479,6 +631,7 @@ async function startSession(){
   showScreen('screen-main');
   history.pushState({screen:'main'},'');
   enableRefreshProtection();
+  showAdminBanner();
   showToast('Chargement du catalogue…','');
   await loadCatalogue();
   await loadUserCount();
