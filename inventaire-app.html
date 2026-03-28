@@ -443,7 +443,8 @@ function init(){
 const userPermissions = {};
 
 async function loadUsers(){
-  const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(CONFIG.SHEET_REGLAGES)}`;
+  // Lire explicitement l'onglet Réglages avec headers=1 pour ignorer la ligne de titres
+  const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=R%C3%A9glages`;
   const sel=document.getElementById('user-select');
   try{
     const res=await fetch(url);
@@ -454,16 +455,18 @@ async function loadUsers(){
     const rows=json.table.rows||[];
     rows.forEach(row=>{
       if(!row||!row.c||!row.c[0])return;
-      const name=(row.c[0].v||row.c[0].f||'').toString().trim();
-      const perm=(row.c[1]?.v||row.c[1]?.f||'').toString().trim().toLowerCase();
+      const name=(row.c[0].v??row.c[0].f??'').toString().trim();
       if(!name)return;
-      userPermissions[name]=perm||'';
+      const perm=(row.c[1]?.v??row.c[1]?.f??'').toString().trim().toLowerCase();
+      userPermissions[name]=perm;
       const o=document.createElement('option');
       o.value=name;o.textContent=name;
       sel.appendChild(o);
     });
+    if(Object.keys(userPermissions).length===0){
+      showToast("Aucun utilisateur dans Réglages",'warn');
+    }
   }catch(e){
-    // Fallback si Sheets inaccessible
     showToast('Impossible de charger les utilisateurs','error');
   }
 }
