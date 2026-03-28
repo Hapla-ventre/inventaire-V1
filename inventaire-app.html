@@ -457,7 +457,7 @@ async function startSession(){
 
 // ── CATALOGUE ──
 async function loadCatalogue(){
-  const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(CONFIG.SHEET_CATALOGUE)}`;
+  const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(CONFIG.SHEET_CATALOGUE)}`;
   try{
     const res=await fetch(url);
     const text=await res.text();
