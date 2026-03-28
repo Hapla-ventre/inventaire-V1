@@ -159,7 +159,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 const CONFIG = {
   SHEET_ID: "1dq0SrQOoXaBBRHVM2yB4SPk1LtKT-6iQrQZwA6ELtZo",
   SHEET_CATALOGUE: "Inventaire V1",
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxIebQolq9W8OqmpvRBXs1OggWusuE-HWd6KB_MWyhLyX8HAlYHCVx5AGo2mdbayr3RZw/exec",
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycby7bX9UHi1fB7Gvrc7xdeDqBtsE__YNnC2vZs8rCTvBkJ7oE_VwooqHlNVSFtIUxQbTdw/exec",
   USERS: ["Thomas", "Jessica", "Sebastien", "Etienne"],
   COL_REF: 0, COL_LIBELLE: 1, COL_STOCK: 2,
 };
@@ -190,10 +190,7 @@ const CONFIG = {
       <div class="user-dot"></div>
       <span class="user-name" id="display-user">—</span>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <div class="stat-pill"><span id="stat-count">0</span> validées</div>
-      <button onclick="localStorage.clear();sessionStorage.clear();showToast('Cache vidé','success');" style="font-family:var(--mono);font-size:10px;background:var(--danger-dim);border:1px solid var(--danger);color:var(--danger);border-radius:20px;padding:4px 10px;cursor:pointer;">Vider cache</button>
-    </div>
+    <div class="stat-pill"><span id="stat-count">0</span> validées</div>
   </div>
   <div class="main-content">
     <div>
