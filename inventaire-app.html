@@ -159,7 +159,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 const CONFIG = {
   SHEET_ID: "1dq0SrQOoXaBBRHVM2yB4SPk1LtKT-6iQrQZwA6ELtZo",
   SHEET_CATALOGUE: "Inventaire V1",
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyWlGqd9pOb2PzdixN89Ka_eXhw45YqVa-T2gvdrPTFxaGcaERbMmMC-lEP1EQBAnUI5g/exec",
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxIebQolq9W8OqmpvRBXs1OggWusuE-HWd6KB_MWyhLyX8HAlYHCVx5AGo2mdbayr3RZw/exec",
   USERS: ["Thomas", "Jessica", "Sebastien", "Etienne"],
   COL_REF: 0, COL_LIBELLE: 1, COL_STOCK: 2,
 };
@@ -616,7 +616,6 @@ async function validate(){
     const firstQty=parseInt(document.querySelector('.cl-input')?.value)||1;
     lignes.push('1 colis de '+firstQty);
   }
-  alert('lignes=['+lignes.join('|')+'] qty='+qty);
   const ref=currentRef||'???';
   const libelle=catalogue[ref]?.libelle||'';
   const payload={
@@ -629,7 +628,6 @@ async function validate(){
 
   const localId=Date.now()+Math.random().toString(36).slice(2);
   const name=libelle||ref;
-  alert('detail: [' + lignes.join('|') + '] qty:' + qty);
   if(navigator.onLine){
     try{
       await sendPayload(payload);
