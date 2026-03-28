@@ -160,7 +160,7 @@ const CONFIG = {
   SHEET_ID: "1dq0SrQOoXaBBRHVM2yB4SPk1LtKT-6iQrQZwA6ELtZo",
   SHEET_CATALOGUE: "Inventaire V1",
   APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyAl9pWOXlJ1nCmbz4p6RiDqSRSUWE2JqZZ4rvWZuzO8IIj5SlVJ1lc13hsV9Ra0I4S8Q/exec",
-  USERS: ["Thomas", "Jessica", "Sebastien", "Etienne"],
+  SHEET_REGLAGES: "Réglages",
   COL_REF: 0, COL_LIBELLE: 1, COL_STOCK: 2,
 };
 </script>
@@ -383,12 +383,11 @@ window.addEventListener('popstate',()=>{
 // ── INIT ──
 function init(){
   const sel=document.getElementById('user-select');
-  CONFIG.USERS.forEach(u=>{
-    const o=document.createElement('option');
-    o.value=u;o.textContent=u;sel.appendChild(o);
-  });
   sel.addEventListener('change',()=>{document.getElementById('btn-start').disabled=!sel.value;});
   document.getElementById('btn-start').addEventListener('click',startSession);
+
+  // Charger les utilisateurs depuis Sheets
+  loadUsers();
 
   // Restaurer session
   const savedUser=sessionStorage.getItem('inv_user');
@@ -440,10 +439,40 @@ function init(){
 }
 
 // ── SESSION ──
+// Stocker les permissions des utilisateurs
+const userPermissions = {};
+
+async function loadUsers(){
+  const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(CONFIG.SHEET_REGLAGES)}`;
+  const sel=document.getElementById('user-select');
+  try{
+    const res=await fetch(url);
+    const text=await res.text();
+    const match=text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
+    if(!match)throw new Error('no match');
+    const json=JSON.parse(match[1]);
+    const rows=json.table.rows||[];
+    rows.forEach(row=>{
+      if(!row||!row.c||!row.c[0])return;
+      const name=(row.c[0].v||row.c[0].f||'').toString().trim();
+      const perm=(row.c[1]?.v||row.c[1]?.f||'').toString().trim().toLowerCase();
+      if(!name)return;
+      userPermissions[name]=perm||'';
+      const o=document.createElement('option');
+      o.value=name;o.textContent=name;
+      sel.appendChild(o);
+    });
+  }catch(e){
+    // Fallback si Sheets inaccessible
+    showToast('Impossible de charger les utilisateurs','error');
+  }
+}
+
 async function startSession(){
   currentUser=document.getElementById('user-select').value;
   document.getElementById('display-user').textContent=currentUser;
   sessionStorage.setItem('inv_user',currentUser);
+  sessionStorage.setItem('inv_perm',userPermissions[currentUser]||'');
   showScreen('screen-main');
   history.pushState({screen:'main'},'');
   enableRefreshProtection();
