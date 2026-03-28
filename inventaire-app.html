@@ -389,20 +389,6 @@ function init(){
   // Charger les utilisateurs depuis Sheets
   loadUsers();
 
-  // Restaurer session
-  const savedUser=sessionStorage.getItem('inv_user');
-  if(savedUser&&CONFIG.USERS.includes(savedUser)){
-    currentUser=savedUser;
-    document.getElementById('display-user').textContent=currentUser;
-    showScreen('screen-main');
-    history.replaceState({screen:'main'},'');
-    enableRefreshProtection();
-    showToast('Chargement du catalogue…','');
-    loadCatalogue().then(loadUserCount);
-    restoreLogs();
-    addCountLine();
-    if(navigator.onLine)setTimeout(flushQueue,2000);
-  }
 
   document.getElementById('ref-input').addEventListener('input',e=>{
     clearTimeout(window._rd);
@@ -465,6 +451,20 @@ async function loadUsers(){
     });
     if(Object.keys(userPermissions).length===0){
       showToast("Aucun utilisateur dans Réglages",'warn');
+    }
+    // Restaurer session après chargement des users
+    const savedUser=sessionStorage.getItem('inv_user');
+    if(savedUser&&userPermissions.hasOwnProperty(savedUser)){
+      currentUser=savedUser;
+      document.getElementById('display-user').textContent=currentUser;
+      showScreen('screen-main');
+      history.replaceState({screen:'main'},'');
+      enableRefreshProtection();
+      showToast('Chargement du catalogue…','');
+      loadCatalogue().then(loadUserCount);
+      restoreLogs();
+      addCountLine();
+      if(navigator.onLine)setTimeout(flushQueue,2000);
     }
   }catch(e){
     showToast('Impossible de charger les utilisateurs','error');
