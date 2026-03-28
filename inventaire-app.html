@@ -421,16 +421,69 @@ let adminThreshold = 20; // % par défaut
 function showAdminBanner(){
   const perm = sessionStorage.getItem('inv_perm') || '';
   const banner = document.getElementById('admin-banner');
-  if(perm === 'administrateur') banner.style.display = 'block';
-  else banner.style.display = 'none';
+  if(perm === 'administrateur'){
+    banner.style.display = 'block';
+    // Demander permission notifications
+    if('Notification' in window && Notification.permission === 'default'){
+      Notification.requestPermission();
+    }
+    // Vérifier suspects en arrière-plan toutes les 60s
+    if(!window._notifCheck){
+      window._notifCheck = setInterval(checkSuspectsNotif, 60000);
+    }
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+let _lastSuspectCount = -1;
+
+async function checkSuspectsNotif(){
+  if(Notification.permission !== 'granted') return;
+  try{
+    const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=Inventaire%20V1`;
+    const res = await fetch(url);
+    const text = await res.text();
+    const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
+    if(!match) return;
+    const json = JSON.parse(match[1]);
+    const rows = json.table.rows || [];
+    const count = rows.filter(row => {
+      if(!row||!row.c) return false;
+      const stockAvant = row.c[2]?.v;
+      const stockApres = row.c[3]?.v;
+      if(stockAvant === null || stockAvant === undefined || stockAvant === 0) return false;
+      if(stockApres === null || stockApres === undefined) return false;
+      const delta = Math.abs((stockApres - stockAvant) / stockAvant) * 100;
+      return delta >= adminThreshold;
+    }).length;
+
+    if(_lastSuspectCount >= 0 && count > _lastSuspectCount){
+      const nouveaux = count - _lastSuspectCount;
+      new Notification('⚠️ Inventaire — Comptage suspect', {
+        body: `${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''} comptage${nouveaux > 1 ? 's' : ''} suspect${nouveaux > 1 ? 's' : ''} détecté${nouveaux > 1 ? 's' : ''}`,
+        icon: ''
+      });
+    }
+    _lastSuspectCount = count;
+  }catch(e){}
 }
 
 function goAdmin(){
   showScreen('screen-admin');
   loadSuspects();
+  if(window._adminRefresh) clearInterval(window._adminRefresh);
+  window._adminRefresh = setInterval(()=>{
+    if(document.getElementById('screen-admin').classList.contains('active')){
+      loadSuspects();
+    } else {
+      clearInterval(window._adminRefresh);
+    }
+  }, 30000);
 }
 
 function leaveAdmin(){
+  if(window._adminRefresh) clearInterval(window._adminRefresh);
   showScreen('screen-main');
 }
 
