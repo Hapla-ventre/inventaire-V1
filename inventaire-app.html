@@ -250,7 +250,7 @@ const CONFIG = {
     </div>
     <div>
       <div class="scan-label" style="margin-bottom:6px;">Zone / Secteur</div>
-      <input type="text" id="zone-scan-input" class="ref-input" style="font-size:16px;letter-spacing:0.02em;" placeholder="ex: Rayon A, Réserve…" autocomplete="off">
+      <input type="text" id="zone-scan-input" class="ref-input" style="font-size:16px;letter-spacing:0.02em;text-transform:none;font-family:var(--sans);" placeholder="ex: Rayon A, Réserve…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
     </div>
     <div class="divider"></div>
     <div class="qty-section">
@@ -843,7 +843,6 @@ async function validate(){
   const ref=currentRef||'???';
   const libelle=catalogue[ref]?.libelle||'';
   const zone=document.getElementById('zone-scan-input')?.value.trim()||'';
-  showToast('Zone: ['+zone+']','');
   const payload={
     action:'addScan',ref,libelle,qty:qtyTotal,conditionnement,
     detailComptage:lignes.join('\n'),zone,
