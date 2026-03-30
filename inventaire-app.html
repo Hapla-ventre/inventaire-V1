@@ -4,20 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#f0f2f5">
 <title>Inventaire</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
 :root {
-  --bg:#f0f2f5;--surface:#ffffff;--surface2:#e8edf2;--border:#c8d0db;
-  --accent:#1a6fe8;--accent-dim:rgba(26,111,232,0.12);--accent-dim2:rgba(26,111,232,0.06);
-  --warn:#e07b00;--warn-dim:rgba(224,123,0,0.12);
-  --danger:#e02020;--danger-dim:rgba(224,32,32,0.10);
-  --found:#1a8a3a;--found-dim:rgba(26,138,58,0.08);--found-border:#1a8a3a;
-  --text:#111827;--text2:#4b5563;--text3:#9ca3af;
-  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
-  --r:14px;--r-sm:10px;
+  --bg:#f0f2f5; --surface:#fff; --surface2:#e8edf2; --border:#c8d0db;
+  --accent:#1a6fe8; --accent-dim:rgba(26,111,232,0.12); --accent-dim2:rgba(26,111,232,0.06);
+  --warn:#e07b00; --warn-dim:rgba(224,123,0,0.12);
+  --danger:#e02020; --danger-dim:rgba(224,32,32,0.10);
+  --found:#1a8a3a; --found-dim:rgba(26,138,58,0.08); --found-border:#1a8a3a;
+  --text:#111827; --text2:#4b5563; --text3:#9ca3af;
+  --mono:'DM Mono',monospace; --sans:'DM Sans',sans-serif;
+  --r:14px; --r-sm:10px;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html{height:100%;}
@@ -44,6 +43,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .user-name{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:0.06em;}
 .stat-pill{font-family:var(--mono);font-size:11px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;}
 .stat-pill span{color:var(--text);}
+.admin-banner{background:var(--accent);color:#fff;padding:10px 16px;text-align:center;font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:0.08em;cursor:pointer;}
+.admin-banner:active{opacity:0.82;}
 .main-content{padding:16px;display:flex;flex-direction:column;gap:12px;}
 .scan-label{font-family:var(--mono);font-size:9px;letter-spacing:0.18em;color:var(--text3);text-transform:uppercase;margin-bottom:6px;}
 .scan-input-row{display:flex;gap:8px;}
@@ -74,11 +75,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .article-info{flex:1;min-width:0;}
 .article-name{font-size:14px;font-weight:500;color:var(--text);white-space:normal;word-break:break-word;}
 .article-meta{font-family:var(--mono);font-size:11px;color:var(--text2);margin-top:2px;}
-.divider{height:1px;background:var(--border);}
-.type-badge{display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:0.12em;text-transform:uppercase;padding:2px 8px;border-radius:10px;font-weight:500;}
+.type-badge{display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:0.12em;text-transform:uppercase;padding:2px 8px;border-radius:10px;font-weight:500;margin-top:4px;}
 .type-badge.base{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);}
 .type-badge.ensemble{background:var(--warn-dim);color:var(--warn);border:1px solid var(--warn);}
 .type-badge.inconnu{background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger);}
+.divider{height:1px;background:var(--border);}
 .qty-section{display:flex;flex-direction:column;gap:10px;}
 .cl-row{display:flex;align-items:flex-end;gap:8px;width:100%;margin-bottom:8px;}
 .cl-group{flex:1;}
@@ -99,7 +100,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .unite-btns{display:flex;gap:8px;flex-wrap:wrap;}
 .unite-btn{flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--text2);font-family:var(--sans);font-size:14px;font-weight:500;padding:10px 8px;cursor:pointer;white-space:nowrap;}
 .unite-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
-.unite-btn:active{transform:scale(0.95);}
 .btn-validate{width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);font-family:var(--sans);font-size:16px;font-weight:600;padding:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;}
 .btn-validate:active{opacity:0.82;transform:scale(0.98);}
 .btn-validate:disabled{opacity:0.2;cursor:not-allowed;transform:none;}
@@ -116,60 +116,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .loading .spinner{display:block;}
 .loading .btn-text{display:none;}
 @keyframes spin{to{transform:rotate(360deg);}}
-.admin-banner {
-  background: var(--accent); color: #fff;
-  padding: 10px 16px; text-align: center;
-  font-family: var(--mono); font-size: 12px; font-weight: 500;
-  letter-spacing: 0.08em; cursor: pointer;
-  transition: opacity 0.15s;
-}
-.admin-banner:active { opacity: 0.82; }
-.admin-banner.back { background: var(--surface2); color: var(--accent); border-bottom: 1px solid var(--border); }
-
-#screen-admin.active { display: block; }
-.admin-topbar {
-  position: sticky; top: 0; z-index: 50;
-  background: var(--accent); color: #fff;
-  padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;
-}
-.admin-topbar-title { font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: 0.08em; }
-.admin-topbar-back { font-family: var(--mono); font-size: 11px; cursor: pointer; opacity: 0.85; padding: 4px 10px; border: 1px solid rgba(255,255,255,0.4); border-radius: 20px; }
-.admin-topbar-back:active { opacity: 0.6; }
-.admin-content { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-.admin-section-title { font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; color: var(--text3); text-transform: uppercase; }
-.suspect-item {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-sm); padding: 12px 14px;
-  display: flex; flex-direction: column; gap: 4px;
-  animation: slideIn 0.2s ease;
-}
-.suspect-item.high { border-color: var(--danger); background: var(--danger-dim); }
-.suspect-item.medium { border-color: var(--warn); background: var(--warn-dim); }
-.suspect-ref { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--text); }
-.suspect-name { font-size: 12px; color: var(--text2); }
-.suspect-row { display: flex; gap: 12px; align-items: center; margin-top: 4px; }
-.suspect-delta { font-family: var(--mono); font-size: 14px; font-weight: 500; }
-.suspect-delta.pos { color: var(--danger); }
-.suspect-delta.neg { color: var(--accent); }
-.suspect-stocks { font-family: var(--mono); font-size: 11px; color: var(--text3); }
-.suspect-user { font-size: 11px; color: var(--text2); margin-left: auto; }
-.admin-empty { text-align: center; color: var(--text2); font-size: 14px; padding: 40px 0; }
-.ensemble-item {
-  background: var(--surface); border: 1px solid var(--warn);
-  border-radius: var(--r-sm); padding: 12px 14px; margin-bottom: 8px;
-}
-.ensemble-item-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.ensemble-ref { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--text); }
-.ensemble-name { font-size: 12px; color: var(--text2); margin-top: 2px; }
-.ensemble-qty { font-family: var(--mono); font-size: 12px; color: var(--text2); }
-.btn-decompose {
-  background: var(--warn); color: #fff; border: none;
-  border-radius: var(--r-sm); font-family: var(--sans);
-  font-size: 12px; font-weight: 600; padding: 6px 12px; cursor: pointer;
-  flex-shrink: 0;
-}
-.btn-decompose:active { opacity: 0.82; }
-
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface);border:1px solid var(--border);border-radius:40px;padding:11px 20px;font-size:14px;color:var(--text);white-space:nowrap;transition:transform 0.28s cubic-bezier(0.34,1.56,0.64,1);z-index:300;pointer-events:none;max-width:calc(100vw - 40px);box-shadow:0 4px 16px rgba(0,0,0,0.12);}
 .toast.show{transform:translateX(-50%) translateY(0);}
 .toast.success{background:rgba(26,138,58,0.1);border-color:var(--found);color:var(--found);}
@@ -191,7 +137,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .cam-scan-btn{position:absolute;bottom:48px;left:50%;transform:translateX(-50%);width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:none;}
 .cam-scan-btn.scanning{background:#1a6fe8;border-color:#1a6fe8;transform:translateX(-50%) scale(0.93);}
 .cam-scan-btn svg{width:28px;height:28px;color:#fff;}
-.cam-scan-btn.scanning svg{color:#fff;}
 .cam-close{position:absolute;top:20px;right:16px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.15);border-radius:50%;width:40px;height:40px;color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
 .cam-status{position:absolute;top:20px;left:16px;font-family:var(--mono);font-size:11px;color:rgba(255,255,255,0.5);background:rgba(0,0,0,0.4);padding:6px 10px;border-radius:20px;}
 .cam-status.ready{color:#1a6fe8;}
@@ -205,29 +150,49 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .confirm-ref-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px 16px;margin-bottom:16px;}
 .confirm-ref-label{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;}
 .confirm-ref-edit{width:100%;background:transparent;border:none;outline:none;font-family:var(--mono);font-size:26px;font-weight:500;color:var(--text);letter-spacing:0.08em;text-transform:uppercase;caret-color:var(--accent);}
-.confirm-libelle{margin-top:8px;font-family:var(--sans);font-size:13px;color:var(--text2);overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;}
+.confirm-libelle{margin-top:8px;font-family:var(--sans);font-size:13px;color:var(--text2);overflow-x:auto;white-space:nowrap;}
 .confirm-btns{display:flex;gap:10px;}
 .btn-retry{flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--text2);font-family:var(--sans);font-size:15px;font-weight:500;padding:14px;cursor:pointer;}
 .btn-confirm{flex:2;background:var(--accent);border:none;border-radius:var(--r-sm);color:#fff;font-family:var(--sans);font-size:15px;font-weight:600;padding:14px;cursor:pointer;}
-.btn-confirm:active{opacity:0.82;}
+.admin-topbar{position:sticky;top:0;z-index:50;background:var(--accent);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;}
+.admin-topbar-title{font-family:var(--mono);font-size:13px;font-weight:500;letter-spacing:0.08em;}
+.admin-topbar-back{font-family:var(--mono);font-size:11px;cursor:pointer;opacity:0.85;padding:4px 10px;border:1px solid rgba(255,255,255,0.4);border-radius:20px;}
+.admin-content{padding:16px;display:flex;flex-direction:column;gap:12px;}
+.admin-section-title{font-family:var(--mono);font-size:9px;letter-spacing:0.18em;color:var(--text3);text-transform:uppercase;}
+.admin-empty{text-align:center;color:var(--text2);font-size:14px;padding:40px 0;}
+.ensemble-item{background:var(--surface);border:1px solid var(--warn);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:8px;}
+.ensemble-ref{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--text);}
+.ensemble-name{font-size:12px;color:var(--text2);margin-top:2px;}
+.btn-decompose{background:var(--warn);color:#fff;border:none;border-radius:var(--r-sm);font-family:var(--sans);font-size:12px;font-weight:600;padding:6px 12px;cursor:pointer;width:100%;margin-top:10px;}
+.suspect-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:8px;animation:slideIn 0.2s ease;}
+.suspect-item.high{border-color:var(--danger);background:var(--danger-dim);}
+.suspect-item.medium{border-color:var(--warn);background:var(--warn-dim);}
+.suspect-ref{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--text);}
+.suspect-name{font-size:12px;color:var(--text2);}
+.suspect-row{display:flex;gap:12px;align-items:center;margin-top:4px;}
+.suspect-delta{font-family:var(--mono);font-size:14px;font-weight:500;}
+.suspect-delta.pos{color:var(--danger);}
+.suspect-delta.neg{color:var(--found);}
+.suspect-stocks{font-family:var(--mono);font-size:11px;color:var(--text3);}
+.suspect-user{font-size:11px;color:var(--text2);margin-left:auto;}
 </style>
 </head>
 <body>
 <script>
 const CONFIG = {
   SHEET_ID: "1dq0SrQOoXaBBRHVM2yB4SPk1LtKT-6iQrQZwA6ELtZo",
-  SHEET_BASES:     "STOCKS BASES",
-  SHEET_ENSEMBLE:  "TABLEAU ENSEMBLE",
-  SHEET_INVENTAIRE:"Inventaire V1",
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbwomSafktwGWXV5dvPGgXr1WaE8pT9b29XzhxXTIN0wcEVAvNZLgBUPKnHwMmLBP55IkA/exec",
-  SHEET_REGLAGES: "Réglages",
-  COL_REF: 0, COL_LIBELLE: 1, COL_STOCK: 2,
+  SHEET_BASES:      "STOCKS BASES",
+  SHEET_ENSEMBLE:   "TABLEAU ENSEMBLE",
+  SHEET_INVENTAIRE: "Inventaire V1",
+  SHEET_REGLAGES:   "Réglages",
+  APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbwomSafktwGWXV5dvPGgXr1WaE8pT9b29XzhxXTIN0wcEVAvNZLgBUPKnHwMmLBP55IkA/exec",
+  VERSION: "v5.0 — 30/03/2026 15:42"
 };
 </script>
 
 <!-- CONNEXION -->
 <div id="screen-config" class="screen active">
-  <div class="config-logo">Inventaire · v4.0</div>
+  <div class="config-logo">Inventaire · <span id="ver-config"></span></div>
   <h1 class="config-title">Bienvenue</h1>
   <p class="config-sub">Sélectionnez votre nom pour commencer</p>
   <div class="config-card">
@@ -245,15 +210,16 @@ const CONFIG = {
 
 <!-- PRINCIPAL -->
 <div id="screen-main" class="screen">
-  <div id="admin-banner" class="admin-banner" style="display:none;" onclick="goAdmin()">
-    Mode administrateur →
-  </div>
+  <div id="admin-banner" class="admin-banner" style="display:none;" onclick="goAdmin()">Mode administrateur →</div>
   <div class="topbar">
     <div class="topbar-user">
       <div class="user-dot"></div>
       <span class="user-name" id="display-user">—</span>
     </div>
-    <div class="stat-pill"><span id="stat-count">0</span> références comptées</div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+      <div class="stat-pill"><span id="stat-count">0</span> références comptées</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);" id="ver-main"></div>
+    </div>
   </div>
   <div class="main-content">
     <div>
@@ -279,13 +245,12 @@ const CONFIG = {
       <div class="article-info">
         <div class="article-name" id="article-name">Scannez une référence</div>
         <div class="article-meta" id="article-meta">—</div>
-        <div id="article-type-badge" style="display:none;margin-top:4px;"></div>
+        <div id="article-type-badge"></div>
       </div>
     </div>
     <div>
       <div class="scan-label" style="margin-bottom:6px;">Zone / Secteur</div>
-      <input type="text" id="zone-scan-input" class="ref-input" style="font-size:16px;letter-spacing:0.02em;"
-             placeholder="ex: Rayon A, Réserve…" autocomplete="off">
+      <input type="text" id="zone-scan-input" class="ref-input" style="font-size:16px;letter-spacing:0.02em;" placeholder="ex: Rayon A, Réserve…" autocomplete="off">
     </div>
     <div class="divider"></div>
     <div class="qty-section">
@@ -317,7 +282,7 @@ const CONFIG = {
   </div>
 </div>
 
-<!-- ÉCRAN ADMIN -->
+<!-- ADMIN -->
 <div id="screen-admin" class="screen">
   <div class="admin-topbar">
     <span class="admin-topbar-title">Mode administrateur</span>
@@ -325,28 +290,11 @@ const CONFIG = {
   </div>
   <div class="admin-content">
     <div class="admin-section-title">Ensembles à décomposer</div>
-    <div id="ensemble-list" style="margin-bottom:16px;"><div class="admin-empty">Chargement…</div></div>
+    <div id="ensemble-list"><div class="admin-empty">Chargement…</div></div>
     <div class="admin-section-title">Comptages suspects</div>
     <div id="suspect-threshold" style="font-size:12px;color:var(--text2);margin-top:-4px;"></div>
     <div id="suspect-list"><div class="admin-empty">Chargement…</div></div>
   </div>
-</div>
-
-<!-- CAMÉRA -->
-<div class="cam-overlay" id="cam-overlay">
-  <video id="cam-video" autoplay playsinline muted></video>
-  <canvas id="cam-canvas"></canvas>
-  <div class="cam-ui">
-    <div class="cam-viewfinder"><div class="cam-viewfinder-inner"><div class="cam-scanline"></div></div></div>
-    <div class="cam-hint">Appuyez sur le bouton pour scanner</div>
-  </div>
-  <div class="cam-status" id="cam-status">Initialisation…</div>
-  <button class="cam-close" id="cam-close">✕</button>
-  <button class="cam-scan-btn" id="cam-scan-btn">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-    </svg>
-  </button>
 </div>
 
 <!-- MODAL OCR -->
@@ -400,19 +348,27 @@ const CONFIG = {
 <div class="toast" id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
-// ── CONFIG & STATE ──
-let currentUser="",catalogue={},currentRef=null;
-let scanCount=0,camStream=null,ocrWorker=null,ocrReady=false,isScanning=false,lineCount=0;
+// ── STATE ──
+let currentUser='', catalogue={}, currentRef=null;
+let scanCount=0, camStream=null, ocrWorker=null, ocrReady=false, isScanning=false, lineCount=0;
+const userPermissions={};
+let adminThreshold=20;
+
+// ── VERSION ──
+document.getElementById('ver-config').textContent=CONFIG.VERSION;
+document.getElementById('ver-main').textContent=CONFIG.VERSION;
 
 // ── CACHE HORS-LIGNE ──
 const QUEUE_KEY='inv_queue';
 function getQueue(){try{return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');}catch{return[];}}
 function saveQueue(q){localStorage.setItem(QUEUE_KEY,JSON.stringify(q));}
+
 async function sendPayload(payload){
   const form=new FormData();
-  form.append("data",JSON.stringify(payload));
-  await fetch(CONFIG.APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",body:form});
+  form.append('data',JSON.stringify(payload));
+  await fetch(CONFIG.APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',body:form});
 }
+
 async function flushQueue(){
   const q=getQueue();
   if(!q.length)return;
@@ -439,226 +395,8 @@ function enableRefreshProtection(){
 }
 function cancelRefresh(){document.getElementById('refresh-overlay').classList.remove('active');}
 function doRefresh(){window.onbeforeunload=null;window.location.reload();}
-function viderCache() {
-  localStorage.removeItem('inv_queue');
-  showToast('Cache vidé', 'success');
-}
-
-// ── ADMIN ──
-let adminThreshold = 20; // % par défaut
-
-function showAdminBanner(){
-  const perm = sessionStorage.getItem('inv_perm') || '';
-  const banner = document.getElementById('admin-banner');
-  if(perm === 'administrateur'){
-    banner.style.display = 'block';
-    // Vérifier suspects en arrière-plan toutes les 60s
-    if(!window._notifCheck){
-      window._notifCheck = setInterval(checkSuspectsNotif, 60000);
-    }
-  } else {
-    banner.style.display = 'none';
-  }
-}
-
-let _lastSuspectCount = -1;
-
-async function checkSuspectsNotif(){
-  if(Notification.permission !== 'granted') return;
-  try{
-    const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=Inventaire%20V1`;
-    const res = await fetch(url);
-    const text = await res.text();
-    const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
-    if(!match) return;
-    const json = JSON.parse(match[1]);
-    const rows = json.table.rows || [];
-    const count = rows.filter(row => {
-      if(!row||!row.c) return false;
-      const stockAvant = row.c[2]?.v;
-      const stockApres = row.c[3]?.v;
-      if(stockAvant === null || stockAvant === undefined || stockAvant === 0) return false;
-      if(stockApres === null || stockApres === undefined) return false;
-      const delta = Math.abs((stockApres - stockAvant) / stockAvant) * 100;
-      return delta >= adminThreshold;
-    }).length;
-
-    if(_lastSuspectCount >= 0 && count > _lastSuspectCount){
-      const nouveaux = count - _lastSuspectCount;
-      new Notification('⚠️ Inventaire — Comptage suspect', {
-        body: `${nouveaux} nouveau${nouveaux > 1 ? 'x' : ''} comptage${nouveaux > 1 ? 's' : ''} suspect${nouveaux > 1 ? 's' : ''} détecté${nouveaux > 1 ? 's' : ''}`,
-        icon: ''
-      });
-    }
-    _lastSuspectCount = count;
-  }catch(e){}
-}
-
-function goAdmin(){
-  showScreen('screen-admin');
-  if('Notification' in window && Notification.permission === 'default'){
-    Notification.requestPermission().then(perm => {
-      if(perm === 'granted') showToast('Notifications activées', 'success');
-    });
-  }
-  loadEnsembles();
-  loadSuspects();
-  if(window._adminRefresh) clearInterval(window._adminRefresh);
-  window._adminRefresh = setInterval(()=>{
-    if(document.getElementById('screen-admin').classList.contains('active')){
-      loadSuspects();
-    } else {
-      clearInterval(window._adminRefresh);
-    }
-  }, 30000);
-}
-
-function leaveAdmin(){
-  if(window._adminRefresh) clearInterval(window._adminRefresh);
-  showScreen('screen-main');
-}
-
-async function loadEnsembles(){
-  const list=document.getElementById('ensemble-list');
-  list.innerHTML='<div class="admin-empty">Chargement…</div>';
-  try{
-    const json=await loadSheet(CONFIG.SHEET_INVENTAIRE);
-    const rows=json.table.rows||[];
-    const ensembles=rows.filter(row=>{
-      if(!row||!row.c)return false;
-      return (row.c[8]?.v||row.c[8]?.f||'').toString().trim()==='ENSEMBLE';
-    });
-    if(!ensembles.length){
-      list.innerHTML='<div class="admin-empty">Aucun ensemble à décomposer</div>';
-      return;
-    }
-    list.innerHTML='';
-    ensembles.forEach((row,i)=>{
-      const ref =(row.c[0]?.v??row.c[0]?.f??'').toString().trim();
-      const name=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
-      const qty =row.c[2]?.v||0;
-      const user=(row.c[6]?.v??row.c[6]?.f??'').toString().trim();
-      const ts  =(row.c[7]?.v??row.c[7]?.f??'').toString().trim();
-      const zone=(row.c[5]?.v??row.c[5]?.f??'').toString().trim();
-      const item=document.createElement('div');
-      item.className='ensemble-item';
-      item.innerHTML=`
-        <div class="ensemble-item-header">
-          <div>
-            <div class="ensemble-ref">${ref}</div>
-            <div class="ensemble-name">${name}</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0;">
-            <div class="ensemble-qty">Qté : ${qty}</div>
-            <div class="ensemble-qty">${user}</div>
-          </div>
-        </div>
-        <button class="btn-decompose" style="width:100%;margin-top:10px;"
-          onclick="decomposeEnsemble('${ref}',${qty},'${zone}','${ts}')">
-          Décomposer en bases
-        </button>`;
-      list.appendChild(item);
-    });
-  }catch(e){
-    list.innerHTML='<div class="admin-empty">Erreur de chargement</div>';
-  }
-}
-
-async function decomposeEnsemble(ref, qty, zone, timestamp){
-  showToast('Décomposition en cours…','');
-  const payload={
-    action:"decompose", ref, qty, zone,
-    user:currentUser,
-    conditionnement:'Unité',
-    timestamp
-  };
-  try{
-    await sendPayload(payload);
-    showToast('Ensemble décomposé en bases','success');
-    loadEnsembles();
-  }catch(e){
-    showToast('Erreur lors de la décomposition','error');
-  }
-}
-
-async function loadSuspects(){
-  const list = document.getElementById('suspect-list');
-  list.innerHTML = '<div class="admin-empty">Chargement…</div>';
-
-  try{
-    // Lire le seuil depuis K2 de l'onglet Réglages
-    const urlR = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=0&sheet=R%C3%A9glages`;
-    const resR = await fetch(urlR);
-    const textR = await resR.text();
-    const matchR = textR.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
-    if(matchR){
-      const jsonR = JSON.parse(matchR[1]);
-      const k2 = jsonR.table?.rows?.[1]?.c?.[10]?.v;
-      if(k2 !== null && k2 !== undefined) adminThreshold = Number(k2);
-    }
-    document.getElementById('suspect-threshold').textContent =
-      `Seuil configuré : ±${adminThreshold}% (cellule K2 de l'onglet Réglages)`;
-
-    // Lire l'inventaire
-    const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=Inventaire%20V1`;
-    const res = await fetch(url);
-    const text = await res.text();
-    const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
-    if(!match) throw new Error('no match');
-    const json = JSON.parse(match[1]);
-    const rows = json.table.rows || [];
-
-    const suspects = [];
-    rows.forEach(row => {
-      if(!row || !row.c) return;
-      const ref        = (row.c[0]?.v ?? row.c[0]?.f ?? '').toString().trim();
-      const name       = (row.c[1]?.v ?? row.c[1]?.f ?? '').toString().trim();
-      const stockAvant = row.c[2]?.v;
-      const stockApres = row.c[3]?.v;
-      const user       = (row.c[7]?.v ?? row.c[7]?.f ?? '').toString().trim();
-
-      if(!ref || stockAvant === null || stockAvant === undefined) return;
-      if(stockApres === null || stockApres === undefined) return;
-      if(stockAvant === 0) return;
-
-      const delta = ((stockApres - stockAvant) / stockAvant) * 100;
-      if(Math.abs(delta) >= adminThreshold){
-        suspects.push({ ref, name, stockAvant, stockApres, delta, user });
-      }
-    });
-
-    if(suspects.length === 0){
-      list.innerHTML = '<div class="admin-empty">Aucun comptage suspect 🎉</div>';
-      return;
-    }
-
-    // Trier par delta absolu décroissant
-    suspects.sort((a,b) => Math.abs(b.delta) - Math.abs(a.delta));
-
-    list.innerHTML = '';
-    suspects.forEach(s => {
-      const item = document.createElement('div');
-      const level = Math.abs(s.delta) >= adminThreshold * 2 ? 'high' : 'medium';
-      item.className = 'suspect-item ' + level;
-      const sign = s.delta > 0 ? '+' : '';
-      const cls  = s.delta > 0 ? 'pos' : 'neg';
-      item.innerHTML = `
-        <div class="suspect-ref">${s.ref}</div>
-        <div class="suspect-name">${s.name}</div>
-        <div class="suspect-row">
-          <span class="suspect-delta ${cls}">${sign}${s.delta.toFixed(1)}%</span>
-          <span class="suspect-stocks">${s.stockAvant} → ${s.stockApres}</span>
-          <span class="suspect-user">${s.user}</span>
-        </div>`;
-      list.appendChild(item);
-    });
-
-  }catch(err){
-    list.innerHTML = '<div class="admin-empty">Erreur de chargement</div>';
-  }
-}
-
 function confirmQuit(){window.onbeforeunload=null;sessionStorage.clear();window.location.reload();}
+
 window.addEventListener('keydown',function(e){
   if(!document.getElementById('screen-main').classList.contains('active'))return;
   if(e.key==='F5'||(e.ctrlKey&&e.key==='r')||(e.metaKey&&e.key==='r')){
@@ -678,15 +416,101 @@ window.addEventListener('popstate',()=>{
   }
 });
 
+// ── CHARGEMENT SHEETS ──
+async function fetchSheet(sheetName){
+  const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(sheetName)}`;
+  const res=await fetch(url);
+  const text=await res.text();
+  const s=text.indexOf('{"version"');
+  const e=text.lastIndexOf('})')+1;
+  if(s<0)throw new Error('Impossible de lire: '+sheetName);
+  return JSON.parse(text.substring(s,e));
+}
+
+// ── UTILISATEURS ──
+async function loadUsers(){
+  const sel=document.getElementById('user-select');
+  try{
+    const json=await fetchSheet(CONFIG.SHEET_REGLAGES);
+    const rows=json.table.rows||[];
+    rows.forEach(row=>{
+      if(!row||!row.c||!row.c[0])return;
+      const name=(row.c[0].v??row.c[0].f??'').toString().trim();
+      if(!name)return;
+      const perm=(row.c[1]?.v??row.c[1]?.f??'').toString().trim().toLowerCase();
+      userPermissions[name]=perm;
+      const o=document.createElement('option');
+      o.value=name;o.textContent=name;
+      sel.appendChild(o);
+    });
+    if(!Object.keys(userPermissions).length)showToast('Aucun utilisateur dans Réglages','warn');
+
+    // Restaurer session
+    const saved=sessionStorage.getItem('inv_user');
+    if(saved&&userPermissions.hasOwnProperty(saved)){
+      currentUser=saved;
+      document.getElementById('display-user').textContent=currentUser;
+      showScreen('screen-main');
+      history.replaceState({screen:'main'},'');
+      enableRefreshProtection();
+      showAdminBanner();
+      showToast('Chargement du catalogue…','');
+      loadCatalogue();
+      loadUserCount();
+      restoreLogs();
+      addCountLine();
+      if(navigator.onLine)setTimeout(flushQueue,2000);
+    }
+  }catch(e){
+    showToast('Erreur chargement utilisateurs: '+e.message,'error');
+  }
+}
+
+// ── CATALOGUE ──
+async function loadCatalogue(){
+  try{
+    const jsonB=await fetchSheet(CONFIG.SHEET_BASES);
+    (jsonB.table.rows||[]).forEach(row=>{
+      if(!row||!row.c||!row.c[0])return;
+      const raw=row.c[0].v??row.c[0].f??'';
+      const ref=raw.toString().replace(/\.0$/,'').trim().toUpperCase();
+      const lib=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
+      const stock=row.c[2]?.v??null;
+      if(ref)catalogue[ref]={libelle:lib,stock,type:'BASE'};
+    });
+    const jsonE=await fetchSheet(CONFIG.SHEET_ENSEMBLE);
+    const seen=new Set();
+    (jsonE.table.rows||[]).forEach(row=>{
+      if(!row||!row.c||!row.c[0])return;
+      const raw=row.c[0].v??row.c[0].f??'';
+      const ref=raw.toString().replace(/\.0$/,'').trim().toUpperCase();
+      const lib=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
+      if(ref&&!seen.has(ref)){seen.add(ref);catalogue[ref]={libelle:lib,stock:null,type:'ENSEMBLE'};}
+    });
+    showToast(Object.keys(catalogue).length+' références chargées','success');
+  }catch(e){showToast('Catalogue non chargé — saisie manuelle possible','warn');}
+}
+
+async function loadUserCount(){
+  try{
+    const json=await fetchSheet(CONFIG.SHEET_INVENTAIRE);
+    const rows=json.table.rows||[];
+    const count=rows.filter(row=>{
+      if(!row||!row.c)return false;
+      return (row.c[6]?.v??row.c[6]?.f??'').toString().trim()===currentUser;
+    }).length;
+    scanCount=count;
+    document.getElementById('stat-count').textContent=scanCount;
+    sessionStorage.setItem('inv_count',scanCount);
+  }catch(e){}
+}
+
 // ── INIT ──
 function init(){
   const sel=document.getElementById('user-select');
   sel.addEventListener('change',()=>{document.getElementById('btn-start').disabled=!sel.value;});
   document.getElementById('btn-start').addEventListener('click',startSession);
-
-  // Charger les utilisateurs depuis Sheets
   loadUsers();
-
 
   document.getElementById('ref-input').addEventListener('input',e=>{
     clearTimeout(window._rd);
@@ -723,71 +547,6 @@ function init(){
 }
 
 // ── SESSION ──
-// Stocker les permissions des utilisateurs
-const userPermissions = {};
-
-async function loadSheet(sheetName){
-  const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(sheetName)}`;
-  const res=await fetch(url);
-  const text=await res.text();
-  const s=text.indexOf('{"version"');
-  const e=text.lastIndexOf('})')+1;
-  if(s<0)throw new Error('no match '+sheetName);
-  return JSON.parse(text.substring(s,e));
-}
-
-async function loadUsers(){
-  const sel=document.getElementById('user-select');
-  try{
-    // Encoder manuellement "Réglages" pour éviter les problèmes d'accent
-    const urlReglages=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=R%C3%A9glages`;
-    const resR=await fetch(urlReglages);
-    const textR=await resR.text();
-    const sR=textR.indexOf('{"version"');
-    const eR=textR.lastIndexOf('})')+1;
-    if(sR<0)throw new Error('no match Réglages');
-    const json=JSON.parse(textR.substring(sR,eR));
-    const rows=json.table.rows||[];
-    rows.forEach(row=>{
-      if(!row||!row.c||!row.c[0])return;
-      const name=(row.c[0].v??row.c[0].f??'').toString().trim();
-      if(!name)return;
-      const perm=(row.c[1]?.v??row.c[1]?.f??'').toString().trim().toLowerCase();
-      userPermissions[name]=perm;
-      const o=document.createElement('option');
-      o.value=name;o.textContent=name;
-      sel.appendChild(o);
-    });
-    if(Object.keys(userPermissions).length===0){
-      showToast("Aucun utilisateur dans Réglages",'warn');
-    }
-    // Restaurer session après chargement des users
-    const savedUser=sessionStorage.getItem('inv_user');
-    if(savedUser&&userPermissions.hasOwnProperty(savedUser)){
-      currentUser=savedUser;
-      document.getElementById('display-user').textContent=currentUser;
-      showScreen('screen-main');
-      history.replaceState({screen:'main'},'');
-      enableRefreshProtection();
-      showAdminBanner();
-      showToast('Chargement du catalogue…','');
-      loadCatalogue().then(loadUserCount);
-      restoreLogs();
-      addCountLine();
-      if(navigator.onLine)setTimeout(flushQueue,2000);
-    }
-  }catch(e){
-    showToast('Erreur: '+e.message,'error');
-    // Fallback : utiliser les noms hardcodés si Sheets inaccessible
-    const fallback=['Thomas','Jessica','Sebastien','Etienne'];
-    const sel=document.getElementById('user-select');
-    fallback.forEach(u=>{
-      const o=document.createElement('option');
-      o.value=u;o.textContent=u;sel.appendChild(o);
-    });
-  }
-}
-
 async function startSession(){
   currentUser=document.getElementById('user-select').value;
   document.getElementById('display-user').textContent=currentUser;
@@ -803,57 +562,423 @@ async function startSession(){
   if(navigator.onLine)setTimeout(flushQueue,1000);
 }
 
-// ── CATALOGUE ──
-async function loadUserCount(){
-  const sheetName="Inventaire V1";
-  const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(sheetName)}`;
+// ── ADMIN ──
+function showAdminBanner(){
+  const perm=sessionStorage.getItem('inv_perm')||'';
+  const b=document.getElementById('admin-banner');
+  if(perm==='administrateur'){
+    b.style.display='block';
+    if(!window._notifCheck){window._notifCheck=setInterval(checkSuspectsNotif,60000);}
+  }else{b.style.display='none';}
+}
+
+function goAdmin(){
+  showScreen('screen-admin');
+  if('Notification'in window&&Notification.permission==='default'){
+    Notification.requestPermission().then(p=>{if(p==='granted')showToast('Notifications activées','success');});
+  }
+  loadEnsembles();
+  loadSuspects();
+  if(window._adminRefresh)clearInterval(window._adminRefresh);
+  window._adminRefresh=setInterval(()=>{
+    if(document.getElementById('screen-admin').classList.contains('active')){loadEnsembles();loadSuspects();}
+    else clearInterval(window._adminRefresh);
+  },30000);
+}
+
+function leaveAdmin(){
+  if(window._adminRefresh)clearInterval(window._adminRefresh);
+  showScreen('screen-main');
+}
+
+async function loadEnsembles(){
+  const list=document.getElementById('ensemble-list');
+  list.innerHTML='<div class="admin-empty">Chargement…</div>';
   try{
-    const res=await fetch(url);
-    const text=await res.text();
-    const match=text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
-    if(!match)return;
-    const json=JSON.parse(match[1]);
+    const json=await fetchSheet(CONFIG.SHEET_INVENTAIRE);
+    const rows=(json.table.rows||[]).filter(row=>{
+      if(!row||!row.c)return false;
+      return (row.c[8]?.v??row.c[8]?.f??'').toString().trim()==='ENSEMBLE';
+    });
+    if(!rows.length){list.innerHTML='<div class="admin-empty">Aucun ensemble à décomposer</div>';return;}
+    list.innerHTML='';
+    rows.forEach(row=>{
+      const ref =(row.c[0]?.v??row.c[0]?.f??'').toString().trim();
+      const name=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
+      const qty =row.c[2]?.v||0;
+      const user=(row.c[6]?.v??row.c[6]?.f??'').toString().trim();
+      const ts  =(row.c[7]?.v??row.c[7]?.f??'').toString().trim();
+      const zone=(row.c[5]?.v??row.c[5]?.f??'').toString().trim();
+      const item=document.createElement('div');
+      item.className='ensemble-item';
+      item.innerHTML=`<div class="ensemble-ref">${ref}</div><div class="ensemble-name">${name}</div><div style="font-size:11px;color:var(--text2);margin-top:4px;">Qté: ${qty} — ${user}</div><button class="btn-decompose" onclick="doDecompose('${ref}',${qty},'${zone}','${ts}')">Décomposer en bases</button>`;
+      list.appendChild(item);
+    });
+  }catch(e){list.innerHTML='<div class="admin-empty">Erreur de chargement</div>';}
+}
+
+async function doDecompose(ref,qty,zone,timestamp){
+  showToast('Décomposition en cours…','');
+  const payload={action:'decompose',ref,qty,zone,user:currentUser,conditionnement:'Unité',timestamp};
+  try{
+    await sendPayload(payload);
+    showToast('Ensemble décomposé en bases','success');
+    loadEnsembles();
+  }catch(e){showToast('Erreur lors de la décomposition','error');}
+}
+
+let _lastSuspectCount=-1;
+async function checkSuspectsNotif(){
+  if(Notification.permission!=='granted')return;
+  try{
+    const json=await fetchSheet(CONFIG.SHEET_INVENTAIRE);
     const rows=json.table.rows||[];
-    // Colonne H = index 7
     const count=rows.filter(row=>{
-      if(!row||!row.c||!row.c[7])return false;
-      const val=(row.c[7].v||row.c[7].f||'').toString().trim();
-      return val===currentUser;
+      if(!row||!row.c)return false;
+      const sa=row.c[2]?.v, sb=row.c[3]?.v;
+      if(sa===null||sa===undefined||sa===0)return false;
+      if(sb===null||sb===undefined)return false;
+      return Math.abs((sb-sa)/sa)*100>=adminThreshold;
     }).length;
-    scanCount=count;
-    document.getElementById('stat-count').textContent=scanCount;
-    sessionStorage.setItem('inv_count',scanCount);
+    if(_lastSuspectCount>=0&&count>_lastSuspectCount){
+      const n=count-_lastSuspectCount;
+      new Notification('⚠️ Comptage suspect',{body:`${n} nouveau${n>1?'x':''} comptage${n>1?'s':''} suspect${n>1?'s':''} détecté${n>1?'s':''}`});
+    }
+    _lastSuspectCount=count;
   }catch(e){}
 }
 
-
-async function loadCatalogue(){
+async function loadSuspects(){
+  const list=document.getElementById('suspect-list');
+  list.innerHTML='<div class="admin-empty">Chargement…</div>';
   try{
-    // Charger STOCKS BASES
-    const jsonB=await loadSheet(CONFIG.SHEET_BASES);
-    jsonB.table.rows.forEach(row=>{
-      if(!row||!row.c||!row.c[0])return;
-      const raw=row.c[0].v??row.c[0].f??'';
-      const ref=raw.toString().replace(/\.0$/,'').trim().toUpperCase();
-      const lib=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
-      const stock=row.c[2]?.v??null;
-      if(ref)catalogue[ref]={libelle:lib,stock,type:'BASE'};
-    });
+    const urlR=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=0&sheet=${encodeURIComponent(CONFIG.SHEET_REGLAGES)}`;
+    const resR=await fetch(urlR);
+    const textR=await resR.text();
+    const sR=textR.indexOf('{"version"');
+    const eR=textR.lastIndexOf('})')+1;
+    if(sR>=0){
+      const jsonR=JSON.parse(textR.substring(sR,eR));
+      const k2=jsonR.table?.rows?.[1]?.c?.[10]?.v;
+      if(k2!==null&&k2!==undefined)adminThreshold=Number(k2);
+    }
+    document.getElementById('suspect-threshold').textContent=`Seuil : ±${adminThreshold}% (cellule K2 de l'onglet Réglages)`;
 
-    // Charger TABLEAU ENSEMBLE
-    const jsonE=await loadSheet(CONFIG.SHEET_ENSEMBLE);
-    const seen=new Set();
-    jsonE.table.rows.forEach(row=>{
-      if(!row||!row.c||!row.c[0])return;
-      const raw=row.c[0].v??row.c[0].f??'';
-      const ref=raw.toString().replace(/\.0$/,'').trim().toUpperCase();
-      const lib=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
-      if(ref&&!seen.has(ref)){
-        seen.add(ref);
-        catalogue[ref]={libelle:lib,stock:null,type:'ENSEMBLE'};
-      }
+    const json=await fetchSheet(CONFIG.SHEET_INVENTAIRE);
+    const rows=json.table.rows||[];
+    const suspects=[];
+    rows.forEach(row=>{
+      if(!row||!row.c)return;
+      const ref=(row.c[0]?.v??row.c[0]?.f??'').toString().trim();
+      const name=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
+      const sa=row.c[2]?.v, sb=row.c[3]?.v;
+      const user=(row.c[6]?.v??row.c[6]?.f??'').toString().trim();
+      if(!ref||sa===null||sa===undefined||sa===0)return;
+      if(sb===null||sb===undefined)return;
+      const delta=((sb-sa)/sa)*100;
+      if(Math.abs(delta)>=adminThreshold)suspects.push({ref,name,sa,sb,delta,user});
     });
-
-    showToast(`${Object.keys(catalogue).length} références chargées`,'success');
-  }catch(e){showToast('Catalogue non chargé — saisie manuelle possible','warn');}
+    if(!suspects.length){list.innerHTML='<div class="admin-empty">Aucun comptage suspect 🎉</div>';return;}
+    suspects.sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
+    list.innerHTML='';
+    suspects.forEach(s=>{
+      const item=document.createElement('div');
+      const level=Math.abs(s.delta)>=adminThreshold*2?'high':'medium';
+      item.className='suspect-item '+level;
+      const sign=s.delta>0?'+':'';
+      const cls=s.delta>0?'pos':'neg';
+      item.innerHTML=`<div class="suspect-ref">${s.ref}</div><div class="suspect-name">${s.name}</div><div class="suspect-row"><span class="suspect-delta ${cls}">${sign}${s.delta.toFixed(1)}%</span><span class="suspect-stocks">${s.sa} → ${s.sb}</span><span class="suspect-user">${s.user}</span></div>`;
+      list.appendChild(item);
+    });
+  }catch(e){list.innerHTML='<div class="admin-empty">Erreur de chargement</div>';}
 }
+
+// ── SUGGESTIONS ──
+function showSuggestions(val){
+  const box=document.getElementById('suggestions');
+  if(!val||val.length<2){box.style.display='none';return;}
+  const matches=Object.keys(catalogue).filter(k=>k.includes(val)||catalogue[k].libelle.toUpperCase().includes(val)).slice(0,3);
+  if(!matches.length){box.style.display='none';return;}
+  box.className='suggestions';
+  box.innerHTML=matches.map(k=>`<div class="suggestion-item" onmousedown="pickSuggestion('${k}')"><span class="suggestion-ref">${k}</span><span class="suggestion-name">${catalogue[k].libelle}</span></div>`).join('');
+  box.style.display='block';
+}
+function hideSuggestions(){document.getElementById('suggestions').style.display='none';}
+function pickSuggestion(ref){document.getElementById('ref-input').value=ref;hideSuggestions();lookupRef(ref);}
+
+// ── LOOKUP ──
+function lookupRef(ref){
+  currentRef=null;
+  const card=document.getElementById('article-card');
+  const input=document.getElementById('ref-input');
+  const vBtn=document.getElementById('btn-validate');
+  if(!ref){
+    card.className='article-card empty';
+    document.getElementById('article-name').textContent='Scannez une référence';
+    document.getElementById('article-meta').textContent='—';
+    document.getElementById('article-type-badge').innerHTML='';
+    vBtn.disabled=true;return;
+  }
+  let art=catalogue[ref];
+  if(!art){const c=ref.replace(/\s+/g,'');const f=Object.keys(catalogue).find(k=>k.replace(/\s+/g,'')===c);if(f)art=catalogue[f];}
+  if(art){
+    currentRef=ref;
+    input.className='ref-input found';card.className='article-card found';
+    document.getElementById('article-name').textContent=art.libelle||ref;
+    document.getElementById('article-meta').textContent=ref;
+    const t=art.type||'BASE';
+    document.getElementById('article-type-badge').innerHTML=`<span class="type-badge ${t.toLowerCase()}">${t}</span>`;
+    vBtn.disabled=false;
+  }else{
+    input.className='ref-input not-found';card.className='article-card not-found';
+    document.getElementById('article-name').textContent='Référence inconnue';
+    document.getElementById('article-meta').textContent=ref+' · absent du catalogue';
+    document.getElementById('article-type-badge').innerHTML='<span class="type-badge inconnu">INCONNU</span>';
+    currentRef=ref;vBtn.disabled=false;
+  }
+}
+
+// ── LIGNES ──
+function addCountLine(){
+  lineCount++;
+  const n=lineCount;
+  const div=document.createElement('div');div.className='count-line';div.id='line-'+n;
+  const row=document.createElement('div');row.className='cl-row';
+  const gQ=document.createElement('div');gQ.className='cl-group';
+  const lQ=document.createElement('span');lQ.className='cl-label';lQ.textContent='Quantité par colis';
+  const iQ=document.createElement('input');iQ.type='number';iQ.inputMode='numeric';iQ.className='cl-input';iQ.value='1';iQ.min='0';iQ.id='qty-'+n;iQ.addEventListener('input',updateTotal);
+  gQ.appendChild(lQ);gQ.appendChild(iQ);
+  const sep=document.createElement('div');sep.className='cl-sep';sep.textContent='×';
+  const gN=document.createElement('div');gN.className='cl-group';
+  const lN=document.createElement('span');lN.className='cl-label';lN.textContent='Nombre de colis';
+  const iN=document.createElement('input');iN.type='number';iN.inputMode='numeric';iN.className='cl-input';iN.value='1';iN.min='0';iN.id='nb-'+n;iN.addEventListener('input',updateTotal);
+  gN.appendChild(lN);gN.appendChild(iN);
+  const sub=document.createElement('div');sub.className='cl-sub';sub.id='sub-'+n;sub.textContent='= 1';
+  const del=document.createElement('button');del.className='btn-del-line';del.textContent='×';
+  del.addEventListener('click',()=>removeLine('line-'+n));
+  row.appendChild(gQ);row.appendChild(sep);row.appendChild(gN);row.appendChild(sub);row.appendChild(del);
+  div.appendChild(row);document.getElementById('count-lines').appendChild(div);
+  updateTotal();
+}
+
+function removeLine(id){
+  const el=document.getElementById(id);if(el){el.remove();updateTotal();}
+  if(!document.getElementById('count-lines').children.length)addCountLine();
+}
+
+function updateTotal(){
+  let total=0;
+  document.querySelectorAll('.count-line').forEach(line=>{
+    const id=line.id.replace('line-','');
+    const q=parseInt(document.getElementById('qty-'+id)?.value)||0;
+    const n=parseInt(document.getElementById('nb-'+id)?.value)||0;
+    const s=q*n;
+    const se=document.getElementById('sub-'+id);if(se)se.textContent='= '+s;
+    total+=s;
+  });
+  document.getElementById('final-display').textContent=total;
+}
+
+// ── VALIDATE ──
+async function validate(){
+  const btn=document.getElementById('btn-validate');
+  btn.disabled=true;btn.classList.add('loading');
+
+  const activeUnite=document.querySelector('.unite-btn.active');
+  const uniteVal=activeUnite?activeUnite.dataset.val:'1';
+  if(uniteVal==='custom'){
+    const lotSize=parseInt(document.getElementById('mult-custom').value);
+    if(!lotSize||lotSize<1){
+      showToast('Renseignez la taille du lot','warn');
+      const mc=document.getElementById('mult-custom');
+      mc.style.borderColor='var(--danger)';
+      mc.addEventListener('input',function ce(){mc.style.borderColor='';mc.removeEventListener('input',ce);});
+      mc.focus();btn.disabled=false;btn.classList.remove('loading');return;
+    }
+  }
+
+  let conditionnement;
+  if(uniteVal==='1')conditionnement='Unité';
+  else if(uniteVal==='2')conditionnement='Paire';
+  else conditionnement='Lot de '+parseInt(document.getElementById('mult-custom').value);
+
+  const lignes=[];
+  let qtyTotal=0;
+  document.querySelectorAll('#count-lines .count-line').forEach(line=>{
+    const inputs=line.querySelectorAll('input.cl-input');
+    const qc=Math.max(1,parseInt(inputs[0]?.value)||1);
+    const nc=Math.max(1,parseInt(inputs[1]?.value)||1);
+    lignes.push(nc+' colis de '+qc);
+    qtyTotal+=qc*nc;
+  });
+  if(!lignes.length){lignes.push('1 colis de 1');qtyTotal=1;}
+
+  const ref=currentRef||'???';
+  const libelle=catalogue[ref]?.libelle||'';
+  const zone=document.getElementById('zone-scan-input')?.value.trim()||'';
+  const payload={
+    action:'addScan',ref,libelle,qty:qtyTotal,conditionnement,
+    detailComptage:lignes.join('\n'),zone,
+    stockBefore:catalogue[ref]?.stock??null,
+    user:currentUser,
+    timestamp:new Date(Date.now()+3600000).toISOString().replace('T',' ').slice(0,19)
+  };
+
+  const localId=Date.now()+Math.random().toString(36).slice(2);
+  const name=libelle||ref;
+  if(navigator.onLine){
+    try{
+      await sendPayload(payload);
+      addLog(localId,ref,name,qtyTotal,false);
+      document.getElementById('stat-count').textContent=++scanCount;
+      saveLogs();showToast('✓ Référence validée','success');
+    }catch{
+      const q=getQueue();q.push({localId,payload});saveQueue(q);
+      addLog(localId,ref,name,qtyTotal,true);
+      document.getElementById('stat-count').textContent=++scanCount;
+      saveLogs();showToast("Hors-ligne — en file d'attente",'warn');
+    }
+  }else{
+    const q=getQueue();q.push({localId,payload});saveQueue(q);
+    addLog(localId,ref,name,qtyTotal,true);
+    document.getElementById('stat-count').textContent=++scanCount;
+    saveLogs();showToast("Hors-ligne — en file d'attente",'warn');
+  }
+  btn.disabled=false;btn.classList.remove('loading');
+  resetScan();
+}
+
+function resetScan(){
+  document.getElementById('ref-input').value='';
+  document.getElementById('ref-input').className='ref-input';
+  document.getElementById('article-card').className='article-card empty';
+  document.getElementById('article-name').textContent='Scannez une référence';
+  document.getElementById('article-meta').textContent='—';
+  document.getElementById('article-type-badge').innerHTML='';
+  document.getElementById('btn-validate').disabled=false;
+  currentRef=null;
+  document.getElementById('count-lines').innerHTML='';lineCount=0;addCountLine();
+  document.getElementById('final-display').textContent='0';
+  document.querySelectorAll('.unite-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+  document.getElementById('mult-custom').style.display='none';
+  document.getElementById('mult-custom').value='';
+  hideSuggestions();
+}
+
+function addLog(localId,ref,name,qty,pending){
+  const time=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  const item=document.createElement('div');
+  item.className='log-item'+(pending?' log-pending':'');item.id='log-'+localId;
+  item.innerHTML=`<span class="log-ref">${ref}</span><span class="log-name">${name}</span><span class="log-qty">${qty}</span><span class="log-time">${time}</span>${pending?'<span class="log-badge">en attente</span>':''}`;
+  document.getElementById('log-list').prepend(item);
+}
+function saveLogs(){
+  sessionStorage.setItem('inv_logs',document.getElementById('log-list').innerHTML);
+  sessionStorage.setItem('inv_count',scanCount);
+}
+function restoreLogs(){
+  const logs=sessionStorage.getItem('inv_logs');
+  const count=sessionStorage.getItem('inv_count');
+  if(logs){document.getElementById('log-list').innerHTML=logs;scanCount=parseInt(count)||0;document.getElementById('stat-count').textContent=scanCount;}
+}
+
+// ── CAMÉRA ──
+async function openCamera(){
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}}});
+    document.getElementById('cam-video').srcObject=camStream;
+    document.getElementById('cam-overlay').classList.add('active');
+    document.getElementById('cam-status').textContent='Initialisation OCR…';
+    document.getElementById('cam-status').className='cam-status';
+    if(!ocrWorker){
+      ocrWorker=await Tesseract.createWorker('eng',1,{logger:()=>{}});
+      await ocrWorker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-',tessedit_pageseg_mode:'7'});
+    }
+    ocrReady=true;
+    document.getElementById('cam-status').textContent='Prêt — appuyez pour scanner';
+    document.getElementById('cam-status').className='cam-status ready';
+  }catch{showToast('Caméra non disponible','error');}
+}
+
+async function triggerOCR(){
+  if(!ocrReady||isScanning)return;
+  isScanning=true;
+  const btn=document.getElementById('cam-scan-btn');btn.classList.add('scanning');
+  document.getElementById('cam-status').textContent='Analyse en cours…';
+  const video=document.getElementById('cam-video');const canvas=document.getElementById('cam-canvas');
+  if(video.readyState<2){isScanning=false;btn.classList.remove('scanning');return;}
+  const vw=video.videoWidth,vh=video.videoHeight;
+  const cropW=Math.round(vw*0.8),cropH=Math.round(vh*0.35);
+  const cropX=Math.round((vw-cropW)/2),cropY=Math.round((vh-cropH)/2)-Math.round(vh*0.08);
+  canvas.width=cropW;canvas.height=cropH;
+  const ctx=canvas.getContext('2d');
+  ctx.drawImage(video,cropX,cropY,cropW,cropH,0,0,cropW,cropH);
+  const preview=document.createElement('canvas');preview.width=cropW;preview.height=cropH;
+  preview.getContext('2d').drawImage(canvas,0,0);
+  ctx.filter='contrast(2.2) brightness(1.15) grayscale(1)';ctx.drawImage(canvas,0,0);
+  try{
+    const{data}=await ocrWorker.recognize(canvas);
+    const cleaned=data.text.replace(/\s/g,'').toUpperCase();
+    const match=cleaned.match(/[A-Z0-9]{3,}/);
+    btn.classList.remove('scanning');
+    if(match){
+      let croppedUrl;
+      try{
+        const word=data.words&&data.words.find(w=>w.text.replace(/\s/g,'').toUpperCase().includes(match[0].slice(0,4)));
+        if(word&&word.bbox){
+          const b=word.bbox,pad=40;
+          const x=Math.max(0,b.x0-pad),y=Math.max(0,b.y0-pad);
+          const w=Math.min(canvas.width-x,(b.x1-b.x0)+pad*2),h=Math.min(canvas.height-y,(b.y1-b.y0)+pad*2);
+          const cc=document.createElement('canvas');cc.width=w;cc.height=h;
+          cc.getContext('2d').drawImage(preview,x,y,w,h,0,0,w,h);
+          croppedUrl=cc.toDataURL('image/jpeg',0.9);
+        }
+      }catch{}
+      showConfirmModal(match[0],croppedUrl||preview.toDataURL('image/jpeg',0.8));
+    }else{
+      document.getElementById('cam-status').textContent='Prêt — appuyez pour scanner';
+      document.getElementById('cam-status').className='cam-status ready';
+    }
+  }catch{btn.classList.remove('scanning');showToast('Erreur OCR','error');}
+  isScanning=false;
+}
+
+function closeCamera(){
+  if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;}
+  ocrReady=false;isScanning=false;
+  document.getElementById('cam-overlay').classList.remove('active');
+  document.getElementById('cam-scan-btn').classList.remove('scanning');
+}
+
+function showConfirmModal(ref,photoUrl){
+  closeCamera();
+  document.getElementById('confirm-photo').src=photoUrl;
+  document.getElementById('confirm-ref-edit').value=ref;
+  const art=catalogue[ref];
+  document.getElementById('confirm-libelle').textContent=art?.libelle||'Référence inconnue';
+  document.getElementById('confirm-libelle').style.color=art?.libelle?'var(--text2)':'var(--danger)';
+  document.getElementById('confirm-overlay').classList.add('active');
+  setTimeout(()=>document.getElementById('confirm-ref-edit').select(),350);
+}
+
+function confirmOCR(){
+  const ref=document.getElementById('confirm-ref-edit').value.trim().toUpperCase();
+  document.getElementById('confirm-overlay').classList.remove('active');
+  if(ref){document.getElementById('ref-input').value=ref;lookupRef(ref);}
+}
+function retryOCR(){document.getElementById('confirm-overlay').classList.remove('active');openCamera();}
+
+// ── UTILITAIRES ──
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+let toastTimer;
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast'+(type?' '+type:'');
+  clearTimeout(toastTimer);
+  requestAnimationFrame(()=>{t.classList.add('show');toastTimer=setTimeout(()=>t.classList.remove('show'),2800);});
+}
+
+init();
+</script>
+</body>
+</html>
