@@ -685,13 +685,6 @@ function init(){
   document.getElementById('btn-start').addEventListener('click',startSession);
 
   // Charger les utilisateurs depuis Sheets
-  const selTest=document.getElementById('user-select');
-  if(selTest){
-    // Test : ajouter option immédiatement pour vérifier que init() tourne
-    const oTest=document.createElement('option');
-    oTest.value='__test__';oTest.textContent='Chargement…';
-    selTest.appendChild(oTest);
-  }
   loadUsers();
 
 
@@ -737,9 +730,10 @@ async function loadSheet(sheetName){
   const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(sheetName)}`;
   const res=await fetch(url);
   const text=await res.text();
-  const match=text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
-  if(!match)throw new Error('no match '+sheetName);
-  return JSON.parse(match[1]);
+  const s=text.indexOf('{"version"');
+  const e=text.lastIndexOf('})')+1;
+  if(s<0)throw new Error('no match '+sheetName);
+  return JSON.parse(text.substring(s,e));
 }
 
 async function loadUsers(){
@@ -749,10 +743,10 @@ async function loadUsers(){
     const urlReglages=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=R%C3%A9glages`;
     const resR=await fetch(urlReglages);
     const textR=await resR.text();
-    const startIdx=textR.indexOf('({"version"');
-    const endIdx=textR.lastIndexOf('})')+1;
-    if(startIdx<0)throw new Error('no match Réglages');
-    const json=JSON.parse(textR.substring(startIdx,endIdx));
+    const sR=textR.indexOf('{"version"');
+    const eR=textR.lastIndexOf('})')+1;
+    if(sR<0)throw new Error('no match Réglages');
+    const json=JSON.parse(textR.substring(sR,eR));
     const rows=json.table.rows||[];
     rows.forEach(row=>{
       if(!row||!row.c||!row.c[0])return;
