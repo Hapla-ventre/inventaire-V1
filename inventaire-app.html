@@ -776,7 +776,14 @@ async function loadUsers(){
       if(navigator.onLine)setTimeout(flushQueue,2000);
     }
   }catch(e){
-    showToast('Impossible de charger les utilisateurs','error');
+    showToast('Erreur: '+e.message,'error');
+    // Fallback : utiliser les noms hardcodés si Sheets inaccessible
+    const fallback=['Thomas','Jessica','Sebastien','Etienne'];
+    const sel=document.getElementById('user-select');
+    fallback.forEach(u=>{
+      const o=document.createElement('option');
+      o.value=u;o.textContent=u;sel.appendChild(o);
+    });
   }
 }
 
