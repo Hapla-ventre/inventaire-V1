@@ -685,6 +685,13 @@ function init(){
   document.getElementById('btn-start').addEventListener('click',startSession);
 
   // Charger les utilisateurs depuis Sheets
+  const selTest=document.getElementById('user-select');
+  if(selTest){
+    // Test : ajouter option immédiatement pour vérifier que init() tourne
+    const oTest=document.createElement('option');
+    oTest.value='__test__';oTest.textContent='Chargement…';
+    selTest.appendChild(oTest);
+  }
   loadUsers();
 
 
