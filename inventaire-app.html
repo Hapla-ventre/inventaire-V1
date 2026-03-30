@@ -808,350 +808,42 @@ async function loadUserCount(){
   }catch(e){}
 }
 
+async function loadSheet(sheetName){
+  const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(sheetName)}`;
+  const res=await fetch(url);
+  const text=await res.text();
+  const match=text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
+  if(!match)throw new Error('no match '+sheetName);
+  return JSON.parse(match[1]);
+}
+
 async function loadCatalogue(){
-  const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(CONFIG.SHEET_CATALOGUE)}`;
   try{
-    const res=await fetch(url);
-    const text=await res.text();
-    const json=JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
-    json.table.rows.forEach(row=>{
-      if(!row||!row.c)return;
-      const cell=row.c[CONFIG.COL_REF];
-      if(!cell)return;
-      const raw=cell.v??cell.f??cell.label??"";
-      const ref=raw.toString().replace(/\.0$/, '').trim().toUpperCase();
-      const lc=row.c[CONFIG.COL_LIBELLE];
-      const libelle=(lc?.v??lc?.f??"").toString().trim();
-      const sc=row.c[CONFIG.COL_STOCK];
-      const stock=sc?.v??null;
-      if(ref)catalogue[ref]={libelle,stock};
+    // Charger STOCKS BASES
+    const jsonB=await loadSheet(CONFIG.SHEET_BASES);
+    jsonB.table.rows.forEach(row=>{
+      if(!row||!row.c||!row.c[0])return;
+      const raw=row.c[0].v??row.c[0].f??'';
+      const ref=raw.toString().replace(/\.0$/,'').trim().toUpperCase();
+      const lib=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
+      const stock=row.c[2]?.v??null;
+      if(ref)catalogue[ref]={libelle:lib,stock,type:'BASE'};
     });
-    const keys = Object.keys(catalogue);
-    showToast(`${keys.length} références chargées`,'success');
+
+    // Charger TABLEAU ENSEMBLE
+    const jsonE=await loadSheet(CONFIG.SHEET_ENSEMBLE);
+    const seen=new Set();
+    jsonE.table.rows.forEach(row=>{
+      if(!row||!row.c||!row.c[0])return;
+      const raw=row.c[0].v??row.c[0].f??'';
+      const ref=raw.toString().replace(/\.0$/,'').trim().toUpperCase();
+      const lib=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
+      if(ref&&!seen.has(ref)){
+        seen.add(ref);
+        catalogue[ref]={libelle:lib,stock:null,type:'ENSEMBLE'};
+      }
+    });
+
+    showToast(`${Object.keys(catalogue).length} références chargées`,'success');
   }catch(e){showToast('Catalogue non chargé — saisie manuelle possible','warn');}
 }
-
-// ── SUGGESTIONS ──
-function showSuggestions(val){
-  const box=document.getElementById('suggestions');
-  if(!val||val.length<2){box.style.display='none';return;}
-  const keys=Object.keys(catalogue);
-  const matches=keys.filter(k=>k.includes(val)||catalogue[k].libelle.toUpperCase().includes(val)).slice(0,3);
-  if(!matches.length){box.style.display='none';return;}
-  box.className='suggestions';
-  box.innerHTML=matches.map(k=>`<div class="suggestion-item" onmousedown="pickSuggestion('${k}')"><span class="suggestion-ref">${k}</span><span class="suggestion-name">${catalogue[k].libelle}</span></div>`).join('');
-  box.style.display='block';
-}
-function hideSuggestions(){document.getElementById('suggestions').style.display='none';}
-function pickSuggestion(ref){document.getElementById('ref-input').value=ref;hideSuggestions();lookupRef(ref);}
-
-// ── LOOKUP ──
-function lookupRef(ref){
-  currentRef=null;
-  const card=document.getElementById('article-card');
-  const input=document.getElementById('ref-input');
-  const vBtn=document.getElementById('btn-validate');
-  if(!ref){
-    card.className='article-card empty';
-    document.getElementById('article-name').textContent='Scannez une référence';
-    document.getElementById('article-meta').textContent='—';
-    vBtn.disabled=true;return;
-  }
-  let art=catalogue[ref];
-  if(!art){
-    const clean=ref.replace(/\s+/g,'');
-    const found=Object.keys(catalogue).find(k=>k.replace(/\s+/g,'')===clean);
-    if(found)art=catalogue[found];
-  }
-  if(art){
-    currentRef=ref;
-    input.className='ref-input found';card.className='article-card found';
-    document.getElementById('article-name').textContent=art.libelle||ref;
-    document.getElementById('article-meta').textContent=ref;
-    vBtn.disabled=false;
-    // Badge type
-    const badge=document.getElementById('article-type-badge');
-    const t=art.type||'BASE';
-    badge.style.display='block';
-    badge.innerHTML=`<span class="type-badge ${t.toLowerCase()}">${t}</span>`;
-  }else{
-    input.className='ref-input not-found';card.className='article-card not-found';
-    document.getElementById('article-name').textContent='Référence inconnue';
-    document.getElementById('article-meta').textContent=ref+' · absent du catalogue';
-    document.getElementById('article-type-badge').style.display='none';
-    currentRef=ref;vBtn.disabled=false;
-  }
-}
-
-// ── LIGNES ──
-function addCountLine(){
-  lineCount++;
-  const n=lineCount;
-  const container=document.getElementById('count-lines');
-  const div=document.createElement('div');div.className='count-line';div.id='line-'+n;
-  const row=document.createElement('div');row.className='cl-row';
-  const gQ=document.createElement('div');gQ.className='cl-group';
-  const lQ=document.createElement('span');lQ.className='cl-label';lQ.textContent='Quantité par colis';
-  const iQ=document.createElement('input');
-  iQ.type='number';iQ.inputMode='numeric';iQ.className='cl-input';iQ.value='1';iQ.min='0';iQ.id='qty-'+n;
-  iQ.addEventListener('input',updateTotal);
-  gQ.appendChild(lQ);gQ.appendChild(iQ);
-  const sep=document.createElement('div');sep.className='cl-sep';sep.textContent='×';
-  const gN=document.createElement('div');gN.className='cl-group';
-  const lN=document.createElement('span');lN.className='cl-label';lN.textContent='Nombre de colis';
-  const iN=document.createElement('input');
-  iN.type='number';iN.inputMode='numeric';iN.className='cl-input';iN.value='1';iN.min='0';iN.id='nb-'+n;
-  iN.addEventListener('input',updateTotal);
-  gN.appendChild(lN);gN.appendChild(iN);
-  const sub=document.createElement('div');sub.className='cl-sub';sub.id='sub-'+n;sub.textContent='= 1';
-  const del=document.createElement('button');del.className='btn-del-line';del.textContent='×';
-  del.addEventListener('click',()=>removeLine('line-'+n));
-  row.appendChild(gQ);row.appendChild(sep);row.appendChild(gN);row.appendChild(sub);row.appendChild(del);
-  div.appendChild(row);container.appendChild(div);
-  updateTotal();
-}
-
-function removeLine(id){
-  const el=document.getElementById(id);
-  if(el){el.remove();updateTotal();}
-  if(document.getElementById('count-lines').children.length===0)addCountLine();
-}
-
-function updateTotal(){
-  let total=0;
-  document.querySelectorAll('.count-line').forEach(line=>{
-    const id=line.id.replace('line-','');
-    const q=parseInt(document.getElementById('qty-'+id)?.value)||0;
-    const n=parseInt(document.getElementById('nb-'+id)?.value)||0;
-    const s=q*n;
-    const se=document.getElementById('sub-'+id);
-    if(se)se.textContent='= '+s;
-    total+=s;
-  });
-  document.getElementById('final-display').textContent=total;
-}
-
-// ── VALIDATE ──
-async function validate(){
-  let qty=0; // sera calculé ci-dessous avec qtyTotal
-  const btn=document.getElementById('btn-validate');
-  btn.disabled=true;btn.classList.add('loading');
-
-  const activeUnite=document.querySelector('.unite-btn.active');
-  const uniteVal=activeUnite?activeUnite.dataset.val:'1';
-  if(uniteVal==='custom'){
-    const lotSize=parseInt(document.getElementById('mult-custom').value);
-    if(!lotSize||lotSize<1){
-      showToast('Renseignez la taille du lot','warn');
-      const mc=document.getElementById('mult-custom');
-      mc.style.borderColor='var(--danger)';
-      mc.addEventListener('input',function ce(){mc.style.borderColor='';mc.removeEventListener('input',ce);});
-      mc.focus();btn.disabled=false;btn.classList.remove('loading');return;
-    }
-  }
-
-  let conditionnement;
-  if(uniteVal==='1')conditionnement='Unité';
-  else if(uniteVal==='2')conditionnement='Paire';
-  else conditionnement='Lot de '+parseInt(document.getElementById('mult-custom').value);
-
-  // Lire les inputs directement depuis le DOM sans passer par ID
-  const lignes=[];
-  let qtyTotal=0;
-  const lineEls=document.querySelectorAll('#count-lines .count-line');
-  lineEls.forEach(line=>{
-    const inputs=line.querySelectorAll('input.cl-input');
-    const qc=Math.max(1, parseInt(inputs[0]?.value)||1);
-    const nc=Math.max(1, parseInt(inputs[1]?.value)||1);
-    lignes.push(nc+' colis de '+qc);
-    qtyTotal+=qc*nc;
-  });
-  if(lignes.length===0){lignes.push('1 colis de 1');qtyTotal=1;}
-  qty=qtyTotal;
-
-  // Fallback si aucune ligne remplie
-  if(lignes.length===0){
-    const firstQty=parseInt(document.querySelector('.cl-input')?.value)||1;
-    lignes.push('1 colis de '+firstQty);
-  }
-  const ref=currentRef||'???';
-  const libelle=catalogue[ref]?.libelle||'';
-  const zone=document.getElementById('zone-scan-input')?.value.trim()||'';
-  const payload={
-    action:"addScan",ref,libelle,qty,conditionnement,
-    detailComptage:lignes.join('\n'),
-    zone,
-    stockBefore:catalogue[ref]?.stock??null,
-    user:currentUser,
-    timestamp:new Date(Date.now()+3600000).toISOString().replace('T',' ').slice(0,19)
-  };
-
-  const localId=Date.now()+Math.random().toString(36).slice(2);
-  const name=libelle||ref;
-  if(navigator.onLine){
-    try{
-      await sendPayload(payload);
-      addLog(localId,ref,name,qty,false);
-      document.getElementById('stat-count').textContent=++scanCount;
-      saveLogs();
-      showToast('✓ Référence validée','success');
-    }catch{
-      const q=getQueue();q.push({localId,payload});saveQueue(q);
-      addLog(localId,ref,name,qty,true);
-      document.getElementById('stat-count').textContent=++scanCount;
-      saveLogs();
-      showToast("Hors-ligne — en file d'attente",'warn');
-    }
-  }else{
-    const q=getQueue();q.push({localId,payload});saveQueue(q);
-    addLog(localId,ref,name,qty,true);
-    document.getElementById('stat-count').textContent=++scanCount;
-    saveLogs();
-    showToast("Hors-ligne — en file d'attente",'warn');
-  }
-  btn.disabled=false;btn.classList.remove('loading');
-  resetScan();
-}
-
-function resetScan(){
-  document.getElementById('ref-input').value='';
-  document.getElementById('ref-input').className='ref-input';
-  document.getElementById('article-card').className='article-card empty';
-  const tb=document.getElementById('article-type-badge'); if(tb) tb.style.display='none';
-  document.getElementById('article-name').textContent='Scannez une référence';
-  document.getElementById('article-meta').textContent='—';
-  document.getElementById('btn-validate').disabled=false;
-  currentRef=null;
-  document.getElementById('count-lines').innerHTML='';
-  lineCount=0;addCountLine();
-  document.getElementById('final-display').textContent='0';
-  document.querySelectorAll('.unite-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
-  document.getElementById('mult-custom').style.display='none';
-  document.getElementById('mult-custom').value='';
-  hideSuggestions();
-  const zi=document.getElementById('zone-scan-input'); if(zi) zi.value='';
-}
-
-// ── LOG ──
-function addLog(localId,ref,name,qty,pending){
-  const time=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-  const item=document.createElement('div');
-  item.className='log-item'+(pending?' log-pending':'');
-  item.id='log-'+localId;
-  item.innerHTML=`<span class="log-ref">${ref}</span><span class="log-name">${name}</span><span class="log-qty">${qty}</span><span class="log-time">${time}</span>${pending?'<span class="log-badge">en attente</span>':''}`;
-  document.getElementById('log-list').prepend(item);
-}
-function saveLogs(){
-  sessionStorage.setItem('inv_logs',document.getElementById('log-list').innerHTML);
-  sessionStorage.setItem('inv_count',scanCount);
-}
-function restoreLogs(){
-  const logs=sessionStorage.getItem('inv_logs');
-  const count=sessionStorage.getItem('inv_count');
-  if(logs){document.getElementById('log-list').innerHTML=logs;scanCount=parseInt(count)||0;document.getElementById('stat-count').textContent=scanCount;}
-}
-
-// ── CAMÉRA ──
-async function openCamera(){
-  try{
-    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}}});
-    document.getElementById('cam-video').srcObject=camStream;
-    document.getElementById('cam-overlay').classList.add('active');
-    document.getElementById('cam-status').textContent='Initialisation OCR…';
-    document.getElementById('cam-status').className='cam-status';
-    if(!ocrWorker){
-      ocrWorker=await Tesseract.createWorker('eng',1,{logger:()=>{}});
-      await ocrWorker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-',tessedit_pageseg_mode:'7'});
-    }
-    ocrReady=true;
-    document.getElementById('cam-status').textContent='Prêt — appuyez pour scanner';
-    document.getElementById('cam-status').className='cam-status ready';
-  }catch{showToast('Caméra non disponible','error');}
-}
-
-async function triggerOCR(){
-  if(!ocrReady||isScanning)return;
-  isScanning=true;
-  const btn=document.getElementById('cam-scan-btn');
-  btn.classList.add('scanning');
-  document.getElementById('cam-status').textContent='Analyse en cours…';
-  const video=document.getElementById('cam-video');
-  const canvas=document.getElementById('cam-canvas');
-  if(video.readyState<2){isScanning=false;btn.classList.remove('scanning');return;}
-  const vw=video.videoWidth,vh=video.videoHeight;
-  const cropW=Math.round(vw*0.8),cropH=Math.round(vh*0.35);
-  const cropX=Math.round((vw-cropW)/2),cropY=Math.round((vh-cropH)/2)-Math.round(vh*0.08);
-  canvas.width=cropW;canvas.height=cropH;
-  const ctx=canvas.getContext('2d');
-  ctx.drawImage(video,cropX,cropY,cropW,cropH,0,0,cropW,cropH);
-  const preview=document.createElement('canvas');
-  preview.width=cropW;preview.height=cropH;
-  preview.getContext('2d').drawImage(canvas,0,0);
-  ctx.filter='contrast(2.2) brightness(1.15) grayscale(1)';
-  ctx.drawImage(canvas,0,0);
-  try{
-    const{data}=await ocrWorker.recognize(canvas);
-    const cleaned=data.text.replace(/\s/g,'').toUpperCase();
-    const match=cleaned.match(/[A-Z0-9]{3,}/);
-    btn.classList.remove('scanning');
-    if(match){
-      let croppedUrl;
-      try{
-        const word=data.words&&data.words.find(w=>w.text.replace(/\s/g,'').toUpperCase().includes(match[0].slice(0,4)));
-        if(word&&word.bbox){
-          const b=word.bbox,pad=40;
-          const x=Math.max(0,b.x0-pad),y=Math.max(0,b.y0-pad);
-          const w=Math.min(canvas.width-x,(b.x1-b.x0)+pad*2),h=Math.min(canvas.height-y,(b.y1-b.y0)+pad*2);
-          const cc=document.createElement('canvas');cc.width=w;cc.height=h;
-          cc.getContext('2d').drawImage(preview,x,y,w,h,0,0,w,h);
-          croppedUrl=cc.toDataURL('image/jpeg',0.9);
-        }
-      }catch{}
-      showConfirmModal(match[0],croppedUrl||preview.toDataURL('image/jpeg',0.8));
-    }else{
-      document.getElementById('cam-status').textContent='Prêt — appuyez pour scanner';
-      document.getElementById('cam-status').className='cam-status ready';
-    }
-  }catch{btn.classList.remove('scanning');showToast('Erreur OCR','error');}
-  isScanning=false;
-}
-
-function closeCamera(){
-  if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;}
-  ocrReady=false;isScanning=false;
-  document.getElementById('cam-overlay').classList.remove('active');
-  document.getElementById('cam-scan-btn').classList.remove('scanning');
-}
-
-function showConfirmModal(ref,photoUrl){
-  closeCamera();
-  document.getElementById('confirm-photo').src=photoUrl;
-  document.getElementById('confirm-ref-edit').value=ref;
-  const art=catalogue[ref];
-  document.getElementById('confirm-libelle').textContent=art?.libelle||'Référence inconnue';
-  document.getElementById('confirm-libelle').style.color=art?.libelle?'var(--text2)':'var(--danger)';
-  document.getElementById('confirm-overlay').classList.add('active');
-  setTimeout(()=>document.getElementById('confirm-ref-edit').select(),350);
-}
-
-function confirmOCR(){
-  const ref=document.getElementById('confirm-ref-edit').value.trim().toUpperCase();
-  document.getElementById('confirm-overlay').classList.remove('active');
-  if(ref){document.getElementById('ref-input').value=ref;lookupRef(ref);}
-}
-function retryOCR(){document.getElementById('confirm-overlay').classList.remove('active');openCamera();}
-
-// ── UTILITAIRES ──
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
-let toastTimer;
-function showToast(msg,type=''){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.className='toast'+(type?' '+type:'');
-  clearTimeout(toastTimer);
-  requestAnimationFrame(()=>{t.classList.add('show');toastTimer=setTimeout(()=>t.classList.remove('show'),2800);});
-}
-
-init();
-</script>
-</body>
-</html>
