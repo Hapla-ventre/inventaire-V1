@@ -186,7 +186,7 @@ const CONFIG = {
   SHEET_INVENTAIRE: "Inventaire V1",
   SHEET_REGLAGES:   "Réglages",
   APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbwomSafktwGWXV5dvPGgXr1WaE8pT9b29XzhxXTIN0wcEVAvNZLgBUPKnHwMmLBP55IkA/exec",
-  VERSION: "v5.0 — 30/03/2026 15:42"
+  VERSION: "v5.1 — 30/03/2026 16:45"
 };
 </script>
 
@@ -602,6 +602,7 @@ async function loadEnsembles(){
     });
     if(!rows.length){list.innerHTML='<div class="admin-empty">Aucun ensemble à décomposer</div>';return;}
     list.innerHTML='';
+    const ensData=[];
     rows.forEach(row=>{
       const ref =(row.c[0]?.v??row.c[0]?.f??'').toString().trim();
       const name=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
@@ -609,10 +610,16 @@ async function loadEnsembles(){
       const user=(row.c[6]?.v??row.c[6]?.f??'').toString().trim();
       const ts  =(row.c[7]?.v??row.c[7]?.f??'').toString().trim();
       const zone=(row.c[5]?.v??row.c[5]?.f??'').toString().trim();
+      ensData.push({ref,name,qty,user,ts,zone});
+    });
+    ensData.forEach((d,i)=>{
       const item=document.createElement('div');
       item.className='ensemble-item';
-      item.innerHTML=`<div class="ensemble-ref">${ref}</div><div class="ensemble-name">${name}</div><div style="font-size:11px;color:var(--text2);margin-top:4px;">Qté: ${qty} — ${user}</div><button class="btn-decompose" onclick="doDecompose('${ref}',${qty},'${zone}','${ts}')">Décomposer en bases</button>`;
-      list.appendChild(item);
+      item.innerHTML=`<div class="ensemble-ref">${d.ref}</div><div class="ensemble-name">${d.name}</div><div style="font-size:11px;color:var(--text2);margin-top:4px;">Qté: ${d.qty} — ${d.user}</div>`;
+      const btn=document.createElement('button');
+      btn.className='btn-decompose';btn.textContent='Décomposer en bases';
+      btn.addEventListener('click',()=>doDecompose(d.ref,d.qty,d.zone,d.ts));
+      item.appendChild(btn);list.appendChild(item);
     });
   }catch(e){list.innerHTML='<div class="admin-empty">Erreur de chargement</div>';}
 }
@@ -664,19 +671,39 @@ async function loadSuspects(){
     }
     document.getElementById('suspect-threshold').textContent=`Seuil : ±${adminThreshold}% (cellule K2 de l'onglet Réglages)`;
 
+    // Charger stock avant depuis STOCKS BASES
+    const jsonB=await fetchSheet(CONFIG.SHEET_BASES);
+    const stockAvant={};
+    (jsonB.table.rows||[]).forEach(row=>{
+      if(!row||!row.c||!row.c[0])return;
+      const ref=(row.c[0].v??row.c[0].f??'').toString().replace(/\.0$/,'').trim().toUpperCase();
+      const stock=row.c[2]?.v??null;
+      if(ref&&stock!==null)stockAvant[ref]=stock;
+    });
+
+    // Charger stock compté depuis Inventaire V1 (sommer par ref)
     const json=await fetchSheet(CONFIG.SHEET_INVENTAIRE);
     const rows=json.table.rows||[];
-    const suspects=[];
+    const stockCompte={};
+    const stockUser={};
     rows.forEach(row=>{
-      if(!row||!row.c)return;
-      const ref=(row.c[0]?.v??row.c[0]?.f??'').toString().trim();
-      const name=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
-      const sa=row.c[2]?.v, sb=row.c[3]?.v;
+      if(!row||!row.c||!row.c[0])return;
+      const ref=(row.c[0]?.v??row.c[0]?.f??'').toString().trim().toUpperCase();
+      const qty=row.c[2]?.v??0;
       const user=(row.c[6]?.v??row.c[6]?.f??'').toString().trim();
-      if(!ref||sa===null||sa===undefined||sa===0)return;
-      if(sb===null||sb===undefined)return;
+      if(!ref)return;
+      stockCompte[ref]=(stockCompte[ref]||0)+qty;
+      stockUser[ref]=user;
+    });
+
+    const suspects=[];
+    Object.keys(stockAvant).forEach(ref=>{
+      const sa=stockAvant[ref];
+      const sb=stockCompte[ref];
+      if(sb===undefined||sb===null||sa===0)return;
       const delta=((sb-sa)/sa)*100;
-      if(Math.abs(delta)>=adminThreshold)suspects.push({ref,name,sa,sb,delta,user});
+      const art=catalogue[ref]||{};
+      if(Math.abs(delta)>=adminThreshold)suspects.push({ref,name:art.libelle||ref,sa,sb,delta,user:stockUser[ref]||''});
     });
     if(!suspects.length){list.innerHTML='<div class="admin-empty">Aucun comptage suspect 🎉</div>';return;}
     suspects.sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
