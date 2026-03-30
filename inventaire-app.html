@@ -742,9 +742,10 @@ async function loadUsers(){
     const urlReglages=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=R%C3%A9glages`;
     const resR=await fetch(urlReglages);
     const textR=await resR.text();
-    const matchR=textR.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
-    if(!matchR)throw new Error('no match Réglages');
-    const json=JSON.parse(matchR[1]);
+    const startIdx=textR.indexOf('({"version"');
+    const endIdx=textR.lastIndexOf('})')+1;
+    if(startIdx<0)throw new Error('no match Réglages');
+    const json=JSON.parse(textR.substring(startIdx,endIdx));
     const rows=json.table.rows||[];
     rows.forEach(row=>{
       if(!row||!row.c||!row.c[0])return;
