@@ -726,6 +726,15 @@ function init(){
 // Stocker les permissions des utilisateurs
 const userPermissions = {};
 
+async function loadSheet(sheetName){
+  const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(sheetName)}`;
+  const res=await fetch(url);
+  const text=await res.text();
+  const match=text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
+  if(!match)throw new Error('no match '+sheetName);
+  return JSON.parse(match[1]);
+}
+
 async function loadUsers(){
   const sel=document.getElementById('user-select');
   try{
@@ -802,14 +811,6 @@ async function loadUserCount(){
   }catch(e){}
 }
 
-async function loadSheet(sheetName){
-  const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(sheetName)}`;
-  const res=await fetch(url);
-  const text=await res.text();
-  const match=text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
-  if(!match)throw new Error('no match '+sheetName);
-  return JSON.parse(match[1]);
-}
 
 async function loadCatalogue(){
   try{
