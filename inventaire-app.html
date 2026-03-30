@@ -75,6 +75,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .article-name{font-size:14px;font-weight:500;color:var(--text);white-space:normal;word-break:break-word;}
 .article-meta{font-family:var(--mono);font-size:11px;color:var(--text2);margin-top:2px;}
 .divider{height:1px;background:var(--border);}
+.type-badge{display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:0.12em;text-transform:uppercase;padding:2px 8px;border-radius:10px;font-weight:500;}
+.type-badge.base{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);}
+.type-badge.ensemble{background:var(--warn-dim);color:var(--warn);border:1px solid var(--warn);}
+.type-badge.inconnu{background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger);}
 .qty-section{display:flex;flex-direction:column;gap:10px;}
 .cl-row{display:flex;align-items:flex-end;gap:8px;width:100%;margin-bottom:8px;}
 .cl-group{flex:1;}
@@ -150,6 +154,21 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .suspect-stocks { font-family: var(--mono); font-size: 11px; color: var(--text3); }
 .suspect-user { font-size: 11px; color: var(--text2); margin-left: auto; }
 .admin-empty { text-align: center; color: var(--text2); font-size: 14px; padding: 40px 0; }
+.ensemble-item {
+  background: var(--surface); border: 1px solid var(--warn);
+  border-radius: var(--r-sm); padding: 12px 14px; margin-bottom: 8px;
+}
+.ensemble-item-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ensemble-ref { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--text); }
+.ensemble-name { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.ensemble-qty { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+.btn-decompose {
+  background: var(--warn); color: #fff; border: none;
+  border-radius: var(--r-sm); font-family: var(--sans);
+  font-size: 12px; font-weight: 600; padding: 6px 12px; cursor: pointer;
+  flex-shrink: 0;
+}
+.btn-decompose:active { opacity: 0.82; }
 
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface);border:1px solid var(--border);border-radius:40px;padding:11px 20px;font-size:14px;color:var(--text);white-space:nowrap;transition:transform 0.28s cubic-bezier(0.34,1.56,0.64,1);z-index:300;pointer-events:none;max-width:calc(100vw - 40px);box-shadow:0 4px 16px rgba(0,0,0,0.12);}
 .toast.show{transform:translateX(-50%) translateY(0);}
@@ -197,7 +216,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 <script>
 const CONFIG = {
   SHEET_ID: "1dq0SrQOoXaBBRHVM2yB4SPk1LtKT-6iQrQZwA6ELtZo",
-  SHEET_CATALOGUE: "Inventaire V1",
+  SHEET_BASES:     "STOCKS BASES",
+  SHEET_ENSEMBLE:  "TABLEAU ENSEMBLE",
+  SHEET_INVENTAIRE:"Inventaire V1",
   APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyAl9pWOXlJ1nCmbz4p6RiDqSRSUWE2JqZZ4rvWZuzO8IIj5SlVJ1lc13hsV9Ra0I4S8Q/exec",
   SHEET_REGLAGES: "Réglages",
   COL_REF: 0, COL_LIBELLE: 1, COL_STOCK: 2,
@@ -258,7 +279,13 @@ const CONFIG = {
       <div class="article-info">
         <div class="article-name" id="article-name">Scannez une référence</div>
         <div class="article-meta" id="article-meta">—</div>
+        <div id="article-type-badge" style="display:none;margin-top:4px;"></div>
       </div>
+    </div>
+    <div>
+      <div class="scan-label" style="margin-bottom:6px;">Zone / Secteur</div>
+      <input type="text" id="zone-scan-input" class="ref-input" style="font-size:16px;letter-spacing:0.02em;"
+             placeholder="ex: Rayon A, Réserve…" autocomplete="off">
     </div>
     <div class="divider"></div>
     <div class="qty-section">
@@ -297,6 +324,8 @@ const CONFIG = {
     <span class="admin-topbar-back" onclick="leaveAdmin()">← Retour scan</span>
   </div>
   <div class="admin-content">
+    <div class="admin-section-title">Ensembles à décomposer</div>
+    <div id="ensemble-list" style="margin-bottom:16px;"><div class="admin-empty">Chargement…</div></div>
     <div class="admin-section-title">Comptages suspects</div>
     <div id="suspect-threshold" style="font-size:12px;color:var(--text2);margin-top:-4px;"></div>
     <div id="suspect-list"><div class="admin-empty">Chargement…</div></div>
@@ -467,12 +496,12 @@ async function checkSuspectsNotif(){
 
 function goAdmin(){
   showScreen('screen-admin');
-  // Demander permission notifications sur action utilisateur (tap)
   if('Notification' in window && Notification.permission === 'default'){
     Notification.requestPermission().then(perm => {
       if(perm === 'granted') showToast('Notifications activées', 'success');
     });
   }
+  loadEnsembles();
   loadSuspects();
   if(window._adminRefresh) clearInterval(window._adminRefresh);
   window._adminRefresh = setInterval(()=>{
@@ -487,6 +516,69 @@ function goAdmin(){
 function leaveAdmin(){
   if(window._adminRefresh) clearInterval(window._adminRefresh);
   showScreen('screen-main');
+}
+
+async function loadEnsembles(){
+  const list=document.getElementById('ensemble-list');
+  list.innerHTML='<div class="admin-empty">Chargement…</div>';
+  try{
+    const json=await loadSheet(CONFIG.SHEET_INVENTAIRE);
+    const rows=json.table.rows||[];
+    const ensembles=rows.filter(row=>{
+      if(!row||!row.c)return false;
+      return (row.c[8]?.v||row.c[8]?.f||'').toString().trim()==='ENSEMBLE';
+    });
+    if(!ensembles.length){
+      list.innerHTML='<div class="admin-empty">Aucun ensemble à décomposer</div>';
+      return;
+    }
+    list.innerHTML='';
+    ensembles.forEach((row,i)=>{
+      const ref =(row.c[0]?.v??row.c[0]?.f??'').toString().trim();
+      const name=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
+      const qty =row.c[2]?.v||0;
+      const user=(row.c[6]?.v??row.c[6]?.f??'').toString().trim();
+      const ts  =(row.c[7]?.v??row.c[7]?.f??'').toString().trim();
+      const zone=(row.c[5]?.v??row.c[5]?.f??'').toString().trim();
+      const item=document.createElement('div');
+      item.className='ensemble-item';
+      item.innerHTML=`
+        <div class="ensemble-item-header">
+          <div>
+            <div class="ensemble-ref">${ref}</div>
+            <div class="ensemble-name">${name}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div class="ensemble-qty">Qté : ${qty}</div>
+            <div class="ensemble-qty">${user}</div>
+          </div>
+        </div>
+        <button class="btn-decompose" style="width:100%;margin-top:10px;"
+          onclick="decomposeEnsemble('${ref}',${qty},'${zone}','${ts}')">
+          Décomposer en bases
+        </button>`;
+      list.appendChild(item);
+    });
+  }catch(e){
+    list.innerHTML='<div class="admin-empty">Erreur de chargement</div>';
+  }
+}
+
+async function decomposeEnsemble(ref, qty, zone, timestamp){
+  showToast('Décomposition en cours…','');
+  const payload={
+    action:"decompose", ref, qty, zone,
+    user:currentUser,
+    conditionnement:'Unité',
+    timestamp
+  };
+  try{
+    await sendPayload(payload);
+    showToast('Ensemble décomposé en bases','success');
+    loadEnsembles();
+  }catch(e){
+    showToast('Erreur lors de la décomposition','error');
+  }
 }
 
 async function loadSuspects(){
@@ -777,10 +869,16 @@ function lookupRef(ref){
     document.getElementById('article-name').textContent=art.libelle||ref;
     document.getElementById('article-meta').textContent=ref;
     vBtn.disabled=false;
+    // Badge type
+    const badge=document.getElementById('article-type-badge');
+    const t=art.type||'BASE';
+    badge.style.display='block';
+    badge.innerHTML=`<span class="type-badge ${t.toLowerCase()}">${t}</span>`;
   }else{
     input.className='ref-input not-found';card.className='article-card not-found';
     document.getElementById('article-name').textContent='Référence inconnue';
     document.getElementById('article-meta').textContent=ref+' · absent du catalogue';
+    document.getElementById('article-type-badge').style.display='none';
     currentRef=ref;vBtn.disabled=false;
   }
 }
@@ -878,9 +976,11 @@ async function validate(){
   }
   const ref=currentRef||'???';
   const libelle=catalogue[ref]?.libelle||'';
+  const zone=document.getElementById('zone-scan-input')?.value.trim()||'';
   const payload={
     action:"addScan",ref,libelle,qty,conditionnement,
     detailComptage:lignes.join('\n'),
+    zone,
     stockBefore:catalogue[ref]?.stock??null,
     user:currentUser,
     timestamp:new Date(Date.now()+3600000).toISOString().replace('T',' ').slice(0,19)
@@ -917,6 +1017,7 @@ function resetScan(){
   document.getElementById('ref-input').value='';
   document.getElementById('ref-input').className='ref-input';
   document.getElementById('article-card').className='article-card empty';
+  const tb=document.getElementById('article-type-badge'); if(tb) tb.style.display='none';
   document.getElementById('article-name').textContent='Scannez une référence';
   document.getElementById('article-meta').textContent='—';
   document.getElementById('btn-validate').disabled=false;
@@ -928,6 +1029,7 @@ function resetScan(){
   document.getElementById('mult-custom').style.display='none';
   document.getElementById('mult-custom').value='';
   hideSuggestions();
+  const zi=document.getElementById('zone-scan-input'); if(zi) zi.value='';
 }
 
 // ── LOG ──
