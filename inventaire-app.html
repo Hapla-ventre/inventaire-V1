@@ -727,15 +727,9 @@ function init(){
 const userPermissions = {};
 
 async function loadUsers(){
-  // Lire explicitement l'onglet Réglages avec headers=1 pour ignorer la ligne de titres
-  const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=R%C3%A9glages`;
   const sel=document.getElementById('user-select');
   try{
-    const res=await fetch(url);
-    const text=await res.text();
-    const match=text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/);
-    if(!match)throw new Error('no match');
-    const json=JSON.parse(match[1]);
+    const json=await loadSheet(CONFIG.SHEET_REGLAGES);
     const rows=json.table.rows||[];
     rows.forEach(row=>{
       if(!row||!row.c||!row.c[0])return;
