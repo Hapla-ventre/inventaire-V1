@@ -198,7 +198,7 @@ const CONFIG = {
   SHEET_INVENTAIRE: "Inventaire V1",
   SHEET_REGLAGES:   "Réglages",
   APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbzZfsRkWechpeItbctRlRB3DukDMHvBuFx757J9MG1y6_uhfO8sU67X6mDfcLyt2YSdyw/exec",
-  VERSION: "v5.12 — 31/03/2026"
+  VERSION: "v5.13 — 31/03/2026"
 };
 </script>
 
@@ -1054,27 +1054,32 @@ function restoreLogs(){
 
 // ── CAMÉRA ──
 async function openCamera(){
+  // Étape 1 : vérifier l'API
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    showToast('API caméra absente','error'); return;
+  }
+  // Étape 2 : obtenir le flux
   try{
-    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-      showToast('Caméra non supportée sur ce navigateur','error');
-      return;
-    }
+    camStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}
+    });
+  }catch(e1){
     try{
-      camStream=await navigator.mediaDevices.getUserMedia({
-        video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}
-      });
-    }catch(e1){
-      try{
-        camStream=await navigator.mediaDevices.getUserMedia({video:true});
-      }catch(e2){
-        showToast('Erreur: '+e2.name+' — '+e2.message,'error');
-        return;
-      }
+      camStream=await navigator.mediaDevices.getUserMedia({video:true});
+    }catch(e2){
+      showToast(e2.name+': '+e2.message,'error'); return;
     }
-    document.getElementById('cam-video').srcObject=camStream;
+  }
+  // Étape 3 : attacher au <video>
+  try{
+    const vid=document.getElementById('cam-video');
+    vid.srcObject=camStream;
     document.getElementById('cam-overlay').classList.add('active');
     document.getElementById('cam-status').textContent='Initialisation OCR…';
     document.getElementById('cam-status').className='cam-status';
+  }catch(e3){showToast('Erreur video: '+e3.message,'error'); return;}
+  // Étape 4 : init Tesseract
+  try{
     if(!ocrWorker){
       ocrWorker=await Tesseract.createWorker('eng',1,{logger:()=>{}});
       await ocrWorker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-',tessedit_pageseg_mode:'7'});
@@ -1082,7 +1087,7 @@ async function openCamera(){
     ocrReady=true;
     document.getElementById('cam-status').textContent='Prêt — appuyez pour scanner';
     document.getElementById('cam-status').className='cam-status ready';
-  }catch{showToast('Caméra non disponible','error');}
+  }catch(e4){showToast('Erreur OCR init: '+e4.message,'error');}
 }
 
 async function triggerOCR(){
