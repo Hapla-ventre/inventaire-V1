@@ -175,6 +175,18 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .suspect-delta.neg{color:var(--found);}
 .suspect-stocks{font-family:var(--mono);font-size:11px;color:var(--text3);}
 .suspect-user{font-size:11px;color:var(--text2);margin-left:auto;}
+.btn-correct{background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);font-family:var(--sans);font-size:12px;font-weight:600;padding:6px 12px;cursor:pointer;margin-top:8px;width:100%;}
+.btn-correct:active{opacity:0.82;}
+.correct-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;align-items:flex-end;justify-content:center;}
+.correct-modal.active{display:flex;}
+.correct-sheet{width:100%;max-width:480px;background:var(--surface);border-radius:20px 20px 0 0;padding:20px 20px 32px;animation:slideUp 0.3s cubic-bezier(0.34,1.4,0.64,1);}
+.correct-title{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;color:var(--text3);text-transform:uppercase;margin-bottom:4px;}
+.correct-ref{font-family:var(--mono);font-size:18px;font-weight:500;color:var(--text);margin-bottom:16px;}
+.correct-input{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--mono);font-size:22px;font-weight:500;text-align:center;padding:12px;outline:none;margin-bottom:10px;}
+.correct-input:focus{border-color:var(--accent);}
+.correct-comment{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--sans);font-size:14px;padding:12px;outline:none;margin-bottom:16px;resize:none;height:72px;}
+.correct-comment:focus{border-color:var(--accent);}
+.correct-btns{display:flex;gap:10px;}
 </style>
 </head>
 <body>
@@ -186,7 +198,7 @@ const CONFIG = {
   SHEET_INVENTAIRE: "Inventaire V1",
   SHEET_REGLAGES:   "Réglages",
   APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbwsnbXc_8fnBuZnhcT6r1FK35yUup9Ut22Baa-AM2ry_PkdOU3OiZoOWP6ym1nBtJR4pg/exec",
-  VERSION: "v5.3 — 30/03/2026"
+  VERSION: "v5.4 — 30/03/2026"
 };
 </script>
 
@@ -294,6 +306,24 @@ const CONFIG = {
     <div class="admin-section-title">Comptages suspects</div>
     <div id="suspect-threshold" style="font-size:12px;color:var(--text2);margin-top:-4px;"></div>
     <div id="suspect-list"><div class="admin-empty">Chargement…</div></div>
+  </div>
+</div>
+
+<!-- MODAL CORRECTION ADMIN -->
+<div class="correct-modal" id="correct-modal">
+  <div class="correct-sheet">
+    <div class="confirm-handle"></div>
+    <div class="correct-title">Correction du stock</div>
+    <div class="correct-ref" id="correct-ref-label">—</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">Stock avant : <span id="correct-avant" style="font-family:var(--mono);font-weight:500;"></span> → Stock compté : <span id="correct-compte" style="font-family:var(--mono);font-weight:500;"></span></div>
+    <div class="field-label" style="margin-bottom:6px;">Stock corrigé</div>
+    <input type="number" id="correct-input" class="correct-input" inputmode="numeric" placeholder="Ex: 42">
+    <div class="field-label" style="margin-bottom:6px;">Commentaire (optionnel)</div>
+    <textarea id="correct-comment" class="correct-comment" placeholder="Ex: Erreur d'étiquetage, recompté le…"></textarea>
+    <div class="correct-btns">
+      <button class="btn-retry" onclick="closeCorrectModal()">Annuler</button>
+      <button class="btn-confirm" onclick="submitCorrection()">Enregistrer</button>
+    </div>
   </div>
 </div>
 
@@ -476,7 +506,9 @@ async function loadCatalogue(){
       const ref=raw.toString().replace(/\.0$/,'').trim().toUpperCase();
       const lib=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
       const stock=row.c[2]?.v??null;
-      if(ref)catalogue[ref]={libelle:lib,stock,type:'BASE'};
+      // Colonne F : colisage spécifique (1 = afficher les unités de comptage)
+      const colisage=row.c[5]?.v??null;
+      if(ref)catalogue[ref]={libelle:lib,stock,type:'BASE',colisage:colisage==1};
     });
     const jsonE=await fetchSheet(CONFIG.SHEET_ENSEMBLE);
     const seen=new Set();
@@ -485,7 +517,9 @@ async function loadCatalogue(){
       const raw=row.c[0].v??row.c[0].f??'';
       const ref=raw.toString().replace(/\.0$/,'').trim().toUpperCase();
       const lib=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
-      if(ref&&!seen.has(ref)){seen.add(ref);catalogue[ref]={libelle:lib,stock:null,type:'ENSEMBLE'};}
+      // Colonne E : colisage spécifique
+      const colisage=row.c[4]?.v??null;
+      if(ref&&!seen.has(ref)){seen.add(ref);catalogue[ref]={libelle:lib,stock:null,type:'ENSEMBLE',colisage:colisage==1};}
     });
     showToast(Object.keys(catalogue).length+' références chargées','success');
   }catch(e){showToast('Catalogue non chargé — saisie manuelle possible','warn');}
@@ -563,6 +597,46 @@ async function startSession(){
 }
 
 // ── ADMIN ──
+// ── CORRECTION ADMIN ──
+let _correctRef='', _correctSa=0, _correctSb=0;
+
+function openCorrectModal(ref, name, sa, sb){
+  _correctRef=ref; _correctSa=sa; _correctSb=sb;
+  document.getElementById('correct-ref-label').textContent=ref+' — '+name;
+  document.getElementById('correct-avant').textContent=sa;
+  document.getElementById('correct-compte').textContent=sb;
+  document.getElementById('correct-input').value='';
+  document.getElementById('correct-comment').value='';
+  document.getElementById('correct-modal').classList.add('active');
+  setTimeout(()=>document.getElementById('correct-input').focus(), 300);
+}
+
+function closeCorrectModal(){
+  document.getElementById('correct-modal').classList.remove('active');
+}
+
+async function submitCorrection(){
+  const val=parseInt(document.getElementById('correct-input').value);
+  if(isNaN(val)||val<0){showToast('Entrez un stock corrigé valide','warn');return;}
+  const comment=document.getElementById('correct-comment').value.trim();
+  const payload={
+    action:'correction',
+    ref:_correctRef,
+    correction:val,
+    commentaire:comment,
+    user:currentUser,
+    timestamp:new Date(Date.now()+3600000).toISOString().replace('T',' ').slice(0,19)
+  };
+  try{
+    await sendPayload(payload);
+    showToast('Correction enregistrée','success');
+    closeCorrectModal();
+    setTimeout(loadSuspects, 1000);
+  }catch(e){
+    showToast('Erreur lors de la correction','error');
+  }
+}
+
 function showAdminBanner(){
   const perm=sessionStorage.getItem('inv_perm')||'';
   const b=document.getElementById('admin-banner');
@@ -593,7 +667,6 @@ function leaveAdmin(){
 
 async function loadEnsembles(){
   const list=document.getElementById('ensemble-list');
-  list.innerHTML='<div class="admin-empty">Chargement…</div>';
   try{
     const json=await fetchSheet(CONFIG.SHEET_INVENTAIRE);
     const rows=(json.table.rows||[]).filter(row=>{
@@ -657,7 +730,7 @@ async function checkSuspectsNotif(){
 
 async function loadSuspects(){
   const list=document.getElementById('suspect-list');
-  list.innerHTML='<div class="admin-empty">Chargement…</div>';
+  // Ne pas vider pendant le rechargement pour éviter le clignotement
   try{
     const urlR=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=0&sheet=${encodeURIComponent(CONFIG.SHEET_REGLAGES)}`;
     const resR=await fetch(urlR);
@@ -696,17 +769,33 @@ async function loadSuspects(){
       stockUser[ref]=user;
     });
 
+    // Charger corrections depuis ANALYSE colonne E
+    const corrections={};
+    try{
+      const jsonA=await fetchSheet('ANALYSE');
+      (jsonA.table.rows||[]).forEach(row=>{
+        if(!row||!row.c||!row.c[0])return;
+        const ref=(row.c[0].v??row.c[0].f??'').toString().trim().toUpperCase();
+        const corr=row.c[4]?.v??null; // colonne E
+        if(ref&&corr!==null)corrections[ref]=corr;
+      });
+    }catch(e){}
+
     const suspects=[];
     Object.keys(stockAvant).forEach(ref=>{
       const sa=stockAvant[ref];
       const sb=stockCompte[ref];
       if(sb===undefined||sb===null||sa===0)return;
-      const delta=((sb-sa)/sa)*100;
+      // Prendre correction si elle existe
+      const corr=corrections[ref]??null;
+      const stockFinal=corr!==null?corr:sb;
+      const delta=((stockFinal-sa)/sa)*100;
       const art=catalogue[ref]||{};
-      if(Math.abs(delta)>=adminThreshold)suspects.push({ref,name:art.libelle||ref,sa,sb,delta,user:stockUser[ref]||''});
+      if(Math.abs(delta)>=adminThreshold)suspects.push({ref,name:art.libelle||ref,sa,sb,corr,stockFinal,delta,user:stockUser[ref]||''});
     });
     if(!suspects.length){list.innerHTML='<div class="admin-empty">Aucun comptage suspect 🎉</div>';return;}
     suspects.sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
+    // Mettre à jour sans vider (rafraichissement invisible)
     list.innerHTML='';
     suspects.forEach(s=>{
       const item=document.createElement('div');
@@ -714,7 +803,22 @@ async function loadSuspects(){
       item.className='suspect-item '+level;
       const sign=s.delta>0?'+':'';
       const cls=s.delta>0?'pos':'neg';
-      item.innerHTML=`<div class="suspect-ref">${s.ref}</div><div class="suspect-name">${s.name}</div><div class="suspect-row"><span class="suspect-delta ${cls}">${sign}${s.delta.toFixed(1)}%</span><span class="suspect-stocks">${s.sa} → ${s.sb}</span><span class="suspect-user">${s.user}</span></div>`;
+      const corrLabel=s.corr!==null?` (corrigé: ${s.corr})`:'';
+      item.innerHTML=`
+        <div class="suspect-ref">${s.ref}</div>
+        <div class="suspect-name">${s.name}</div>
+        <div class="suspect-row">
+          <span class="suspect-delta ${cls}">${sign}${s.delta.toFixed(1)}%</span>
+          <span class="suspect-user">${s.user}</span>
+        </div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text2);margin-top:4px;">
+          Stock avant : <strong>${s.sa}</strong> → Stock compté : <strong>${s.sb}</strong>${corrLabel}
+        </div>`;
+      const btn=document.createElement('button');
+      btn.className='btn-correct';
+      btn.textContent='Corriger le stock';
+      btn.addEventListener('click',()=>openCorrectModal(s.ref,s.name,s.sa,s.sb));
+      item.appendChild(btn);
       list.appendChild(item);
     });
   }catch(e){list.innerHTML='<div class="admin-empty">Erreur de chargement</div>';}
@@ -755,12 +859,22 @@ function lookupRef(ref){
     document.getElementById('article-meta').textContent=ref;
     const t=art.type||'BASE';
     document.getElementById('article-type-badge').innerHTML=`<span class="type-badge ${t.toLowerCase()}">${t}</span>`;
+    // Afficher/masquer unité de comptage selon colisage
+    const uniteRow=document.querySelector('.unite-row');
+    if(uniteRow)uniteRow.style.display=art.colisage?'block':'none';
+    if(!art.colisage){
+      // Forcer à Unité par défaut
+      document.querySelectorAll('.unite-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+      document.getElementById('mult-custom').style.display='none';
+    }
     vBtn.disabled=false;
   }else{
     input.className='ref-input not-found';card.className='article-card not-found';
     document.getElementById('article-name').textContent='Référence inconnue';
     document.getElementById('article-meta').textContent=ref+' · absent du catalogue';
     document.getElementById('article-type-badge').innerHTML='<span class="type-badge inconnu">INCONNU</span>';
+    const uniteRowU=document.querySelector('.unite-row');
+    if(uniteRowU)uniteRowU.style.display='none';
     currentRef=ref;vBtn.disabled=false;
   }
 }
@@ -889,6 +1003,7 @@ function resetScan(){
   document.querySelectorAll('.unite-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
   document.getElementById('mult-custom').style.display='none';
   document.getElementById('mult-custom').value='';
+  const ur=document.querySelector('.unite-row');if(ur)ur.style.display='none';
   hideSuggestions();
 }
 
