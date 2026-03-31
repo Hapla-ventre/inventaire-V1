@@ -940,7 +940,7 @@ async function validate(){
   // Si colisage spécial affiché et aucun bouton sélectionné → bloquer
   const colisageVisible=document.getElementById('unite-row').style.display!=='none';
   if(colisageVisible&&!uniteVal){
-    showToast('Renseignez l'unité de comptage','warn');
+    showToast("Renseignez l'unité de comptage",'warn');
     document.getElementById('colisage-warning').style.animation='pulse 0.3s ease';
     btn.disabled=false;btn.classList.remove('loading');return;
   }
