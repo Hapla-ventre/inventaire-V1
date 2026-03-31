@@ -198,7 +198,7 @@ const CONFIG = {
   SHEET_INVENTAIRE: "Inventaire V1",
   SHEET_REGLAGES:   "Réglages",
   APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbzZfsRkWechpeItbctRlRB3DukDMHvBuFx757J9MG1y6_uhfO8sU67X6mDfcLyt2YSdyw/exec",
-  VERSION: "v5.8 — 30/03/2026"
+  VERSION: "v5.9 — 30/03/2026"
 };
 </script>
 
@@ -491,7 +491,7 @@ async function loadUsers(){
       loadCatalogue();
       loadUserCount();
       restoreLogs();
-      addCountLine();
+      if(!document.getElementById('count-lines').children.length) addCountLine();
       if(navigator.onLine)setTimeout(flushQueue,2000);
     }
   }catch(e){
@@ -596,6 +596,7 @@ async function startSession(){
   showToast('Chargement du catalogue…','');
   await loadCatalogue();
   await loadUserCount();
+  addCountLine();
   if(navigator.onLine)setTimeout(flushQueue,1000);
 }
 
@@ -1054,6 +1055,10 @@ function restoreLogs(){
 // ── CAMÉRA ──
 async function openCamera(){
   try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+      showToast('Caméra non supportée sur ce navigateur','error');
+      return;
+    }
     const constraints=[
       {video:{facingMode:{exact:'environment'}}},
       {video:{facingMode:'environment'}},
@@ -1061,10 +1066,18 @@ async function openCamera(){
       {video:true}
     ];
     let gotStream=false;
+    let lastErr='';
     for(const c of constraints){
-      try{camStream=await navigator.mediaDevices.getUserMedia(c);gotStream=true;break;}catch(e){}
+      try{
+        camStream=await navigator.mediaDevices.getUserMedia(c);
+        gotStream=true;
+        break;
+      }catch(e){lastErr=e.name+': '+e.message;}
     }
-    if(!gotStream)throw new Error('Caméra inaccessible');
+    if(!gotStream){
+      showToast('Caméra: '+lastErr,'error');
+      return;
+    }
     document.getElementById('cam-video').srcObject=camStream;
     document.getElementById('cam-overlay').classList.add('active');
     document.getElementById('cam-status').textContent='Initialisation OCR…';
