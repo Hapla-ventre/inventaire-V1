@@ -198,7 +198,7 @@ const CONFIG = {
   SHEET_INVENTAIRE: "Inventaire V1",
   SHEET_REGLAGES:   "Réglages",
   APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbzZfsRkWechpeItbctRlRB3DukDMHvBuFx757J9MG1y6_uhfO8sU67X6mDfcLyt2YSdyw/exec",
-  VERSION: "v5.11 — 30/03/2026"
+  VERSION: "v5.12 — 31/03/2026"
 };
 </script>
 
@@ -1061,10 +1061,15 @@ async function openCamera(){
     }
     try{
       camStream=await navigator.mediaDevices.getUserMedia({
-        video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}}
+        video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}
       });
     }catch(e1){
-      camStream=await navigator.mediaDevices.getUserMedia({video:true});
+      try{
+        camStream=await navigator.mediaDevices.getUserMedia({video:true});
+      }catch(e2){
+        showToast('Erreur: '+e2.name+' — '+e2.message,'error');
+        return;
+      }
     }
     document.getElementById('cam-video').srcObject=camStream;
     document.getElementById('cam-overlay').classList.add('active');
