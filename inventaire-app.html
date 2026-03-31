@@ -198,7 +198,7 @@ const CONFIG = {
   SHEET_INVENTAIRE: "Inventaire V1",
   SHEET_REGLAGES:   "Réglages",
   APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbzZfsRkWechpeItbctRlRB3DukDMHvBuFx757J9MG1y6_uhfO8sU67X6mDfcLyt2YSdyw/exec",
-  VERSION: "v5.7 — 30/03/2026"
+  VERSION: "v5.8 — 30/03/2026"
 };
 </script>
 
@@ -1031,6 +1031,7 @@ function resetScan(){
   document.getElementById('colisage-warning').style.display='none';
   document.querySelectorAll('.unite-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
   hideSuggestions();
+  const zi=document.getElementById('zone-scan-input');if(zi)zi.value='';
 }
 
 function addLog(localId,ref,name,qty,pending){
@@ -1053,16 +1054,17 @@ function restoreLogs(){
 // ── CAMÉRA ──
 async function openCamera(){
   try{
-    // Essayer d'abord avec caméra arrière, sinon fallback sans contrainte
-    try{
-      camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
-    }catch(e1){
-      try{
-        camStream=await navigator.mediaDevices.getUserMedia({video:true});
-      }catch(e2){
-        throw new Error('Caméra inaccessible');
-      }
+    const constraints=[
+      {video:{facingMode:{exact:'environment'}}},
+      {video:{facingMode:'environment'}},
+      {video:{facingMode:{ideal:'environment'}}},
+      {video:true}
+    ];
+    let gotStream=false;
+    for(const c of constraints){
+      try{camStream=await navigator.mediaDevices.getUserMedia(c);gotStream=true;break;}catch(e){}
     }
+    if(!gotStream)throw new Error('Caméra inaccessible');
     document.getElementById('cam-video').srcObject=camStream;
     document.getElementById('cam-overlay').classList.add('active');
     document.getElementById('cam-status').textContent='Initialisation OCR…';
