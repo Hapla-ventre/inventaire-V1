@@ -198,7 +198,7 @@ const CONFIG = {
   SHEET_INVENTAIRE: "Inventaire V1",
   SHEET_REGLAGES:   "Réglages",
   APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbwtiiGGVjwDZUseQajkifTqiHlm5EHYQMYVJpoKyvEeN7-Zc4avnkL7Xqi-XKJ7N1DEGw/exec",
-  VERSION: "v5.5 — 30/03/2026"
+  VERSION: "v5.6 — 30/03/2026"
 };
 </script>
 
@@ -272,7 +272,10 @@ const CONFIG = {
         <div class="final-label">Quantité totale</div>
         <div class="final-val" id="final-display">0</div>
       </div>
-      <div class="unite-row">
+      <div id="colisage-warning" style="display:none;background:var(--danger-dim);border:1.5px solid var(--danger);border-radius:var(--r-sm);padding:12px 14px;color:var(--danger);font-size:13px;font-weight:600;">
+  ⚠️ Colisage spécial — renseignez votre unité de comptage
+</div>
+<div class="unite-row" id="unite-row" style="display:none;">
         <div class="unite-label">Unité de comptage</div>
         <div class="unite-btns">
           <button class="unite-btn active" data-val="1">Unité</button>
@@ -860,10 +863,17 @@ function lookupRef(ref){
     const t=art.type||'BASE';
     document.getElementById('article-type-badge').innerHTML=`<span class="type-badge ${t.toLowerCase()}">${t}</span>`;
     // Afficher/masquer unité de comptage selon colisage
-    const uniteRow=document.querySelector('.unite-row');
-    if(uniteRow)uniteRow.style.display=art.colisage?'block':'none';
-    if(!art.colisage){
-      // Forcer à Unité par défaut
+    const uniteRow=document.getElementById('unite-row');
+    const colisageWarn=document.getElementById('colisage-warning');
+    if(art.colisage){
+      if(uniteRow)uniteRow.style.display='block';
+      if(colisageWarn)colisageWarn.style.display='block';
+      // Ne pas présélectionner — forcer le choix
+      document.querySelectorAll('.unite-btn').forEach(b=>b.classList.remove('active'));
+    }else{
+      if(uniteRow)uniteRow.style.display='none';
+      if(colisageWarn)colisageWarn.style.display='none';
+      // Forcer Unité par défaut
       document.querySelectorAll('.unite-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
       document.getElementById('mult-custom').style.display='none';
     }
@@ -873,8 +883,8 @@ function lookupRef(ref){
     document.getElementById('article-name').textContent='Référence inconnue';
     document.getElementById('article-meta').textContent=ref+' · absent du catalogue';
     document.getElementById('article-type-badge').innerHTML='<span class="type-badge inconnu">INCONNU</span>';
-    const uniteRowU=document.querySelector('.unite-row');
-    if(uniteRowU)uniteRowU.style.display='none';
+    document.getElementById('unite-row').style.display='none';
+    document.getElementById('colisage-warning').style.display='none';
     currentRef=ref;vBtn.disabled=false;
   }
 }
@@ -926,7 +936,14 @@ async function validate(){
   btn.disabled=true;btn.classList.add('loading');
 
   const activeUnite=document.querySelector('.unite-btn.active');
-  const uniteVal=activeUnite?activeUnite.dataset.val:'1';
+  const uniteVal=activeUnite?activeUnite.dataset.val:null;
+  // Si colisage spécial affiché et aucun bouton sélectionné → bloquer
+  const colisageVisible=document.getElementById('unite-row').style.display!=='none';
+  if(colisageVisible&&!uniteVal){
+    showToast('Renseignez l'unité de comptage','warn');
+    document.getElementById('colisage-warning').style.animation='pulse 0.3s ease';
+    btn.disabled=false;btn.classList.remove('loading');return;
+  }
   if(uniteVal==='custom'){
     const lotSize=parseInt(document.getElementById('mult-custom').value);
     if(!lotSize||lotSize<1){
@@ -939,7 +956,7 @@ async function validate(){
   }
 
   let conditionnement;
-  if(uniteVal==='1')conditionnement='Unité';
+  if(!uniteVal||uniteVal==='1')conditionnement='Unité';
   else if(uniteVal==='2')conditionnement='Paire';
   else conditionnement='Lot de '+parseInt(document.getElementById('mult-custom').value);
 
@@ -957,6 +974,13 @@ async function validate(){
   const ref=currentRef||'???';
   const libelle=catalogue[ref]?.libelle||'';
   const zone=document.getElementById('zone-scan-input')?.value.trim()||'';
+  if(!zone){
+    showToast('Renseignez la zone / secteur','warn');
+    const zi=document.getElementById('zone-scan-input');
+    zi.style.borderColor='var(--danger)';
+    zi.addEventListener('input',function ze(){zi.style.borderColor='';zi.removeEventListener('input',ze);});
+    zi.focus();btn.disabled=false;btn.classList.remove('loading');return;
+  }
   const payload={
     action:'addScan',ref,libelle,qty:qtyTotal,conditionnement,
     detailComptage:lignes.join('\n'),zone,
@@ -1003,7 +1027,9 @@ function resetScan(){
   document.querySelectorAll('.unite-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
   document.getElementById('mult-custom').style.display='none';
   document.getElementById('mult-custom').value='';
-  const ur=document.querySelector('.unite-row');if(ur)ur.style.display='none';
+  document.getElementById('unite-row').style.display='none';
+  document.getElementById('colisage-warning').style.display='none';
+  document.querySelectorAll('.unite-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
   hideSuggestions();
 }
 
@@ -1027,7 +1053,16 @@ function restoreLogs(){
 // ── CAMÉRA ──
 async function openCamera(){
   try{
-    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}}});
+    // Essayer d'abord avec caméra arrière, sinon fallback sans contrainte
+    try{
+      camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
+    }catch(e1){
+      try{
+        camStream=await navigator.mediaDevices.getUserMedia({video:true});
+      }catch(e2){
+        throw new Error('Caméra inaccessible');
+      }
+    }
     document.getElementById('cam-video').srcObject=camStream;
     document.getElementById('cam-overlay').classList.add('active');
     document.getElementById('cam-status').textContent='Initialisation OCR…';
