@@ -469,7 +469,7 @@ window.addEventListener('popstate',()=>{
 
 // ── CHARGEMENT SHEETS ──
 async function fetchSheet(sheetName){
-  const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(sheetName)}`;
+  const url=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=0&sheet=${encodeURIComponent(sheetName)}`;
   const res=await fetch(url);
   const text=await res.text();
   const s=text.indexOf('{"version"');
