@@ -198,7 +198,7 @@ const CONFIG = {
   SHEET_INVENTAIRE: "Inventaire V1",
   SHEET_REGLAGES:   "Réglages",
   APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbzZfsRkWechpeItbctRlRB3DukDMHvBuFx757J9MG1y6_uhfO8sU67X6mDfcLyt2YSdyw/exec",
-  VERSION: "v5.14 — 31/03/2026"
+  VERSION: "v5.15 — 01/04/2026"
 };
 </script>
 
@@ -339,6 +339,7 @@ const CONFIG = {
     <div class="confirm-ref-box">
       <div class="confirm-ref-label">Référence lue</div>
       <input type="text" id="confirm-ref-edit" class="confirm-ref-edit" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+      <div id="confirm-suggestions" class="suggestions" style="display:none;margin-top:8px;"></div>
       <div id="confirm-libelle" class="confirm-libelle">—</div>
     </div>
     <div class="confirm-btns">
@@ -594,13 +595,7 @@ function init(){
   sb.addEventListener('touchstart',e=>{e.preventDefault();triggerOCR();},{passive:false});
   document.getElementById('btn-confirm').addEventListener('click',confirmOCR);
   document.getElementById('btn-retry').addEventListener('click',retryOCR);
-  document.getElementById('confirm-ref-edit').addEventListener('input',e=>{
-    const r=e.target.value.trim().toUpperCase();
-    const a=catalogue[r];
-    const lbl=document.getElementById('confirm-libelle');
-    lbl.textContent=a?.libelle||(r?'Référence inconnue':'—');
-    lbl.style.color=a?.libelle?'var(--text2)':'var(--danger)';
-  });
+  document.getElementById('confirm-ref-edit').addEventListener('input',onConfirmRefInput);
   addCountLine();
 }
 
@@ -1119,8 +1114,18 @@ async function triggerOCR(){
   const video=document.getElementById('cam-video');const canvas=document.getElementById('cam-canvas');
   if(video.readyState<2){isScanning=false;btn.classList.remove('scanning');return;}
   const vw=video.videoWidth,vh=video.videoHeight;
-  const cropW=Math.round(vw*0.8),cropH=Math.round(vh*0.35);
-  const cropX=Math.round((vw-cropW)/2),cropY=Math.round((vh-cropH)/2)-Math.round(vh*0.08);
+  const // Aligner le crop sur la position réelle du viewfinder à l'écran
+  const vfEl=document.getElementById('cam-overlay').querySelector('.cam-viewfinder');
+  const vfRect=vfEl.getBoundingClientRect();
+  const sw=window.innerWidth,sh=window.innerHeight;
+  // object-fit:cover → calculer le ratio d'affichage
+  const scale=Math.max(sw/vw,sh/vh);
+  const dispW=vw*scale,dispH=vh*scale;
+  const offX=(dispW-sw)/2,offY=(dispH-sh)/2;
+  // Convertir coords écran → coords vidéo
+  const cropX=Math.round((vfRect.left+offX)/scale);
+  const cropY=Math.round((vfRect.top+offY)/scale);
+  const cropW=Math.round(vfRect.width/scale),cropH=Math.round(vfRect.height/scale);
   canvas.width=cropW;canvas.height=cropH;
   const ctx=canvas.getContext('2d');
   ctx.drawImage(video,cropX,cropY,cropW,cropH,0,0,cropW,cropH);
@@ -1168,14 +1173,37 @@ function showConfirmModal(ref,photoUrl){
   const art=catalogue[ref];
   document.getElementById('confirm-libelle').textContent=art?.libelle||'Référence inconnue';
   document.getElementById('confirm-libelle').style.color=art?.libelle?'var(--text2)':'var(--danger)';
+  document.getElementById('confirm-suggestions').style.display='none';
   document.getElementById('confirm-overlay').classList.add('active');
   setTimeout(()=>document.getElementById('confirm-ref-edit').select(),350);
 }
 
 function confirmOCR(){
   const ref=document.getElementById('confirm-ref-edit').value.trim().toUpperCase();
+  document.getElementById('confirm-suggestions').style.display='none';
   document.getElementById('confirm-overlay').classList.remove('active');
   if(ref){document.getElementById('ref-input').value=ref;lookupRef(ref);}
+}
+
+function onConfirmRefInput(){
+  const val=document.getElementById('confirm-ref-edit').value.trim().toUpperCase();
+  const box=document.getElementById('confirm-suggestions');
+  const lbl=document.getElementById('confirm-libelle');
+  const art=catalogue[val];
+  lbl.textContent=art?.libelle||(val?'Référence inconnue':'—');
+  lbl.style.color=art?.libelle?'var(--text2)':'var(--danger)';
+  if(!val||val.length<2){box.style.display='none';return;}
+  const matches=Object.keys(catalogue).filter(k=>k.includes(val)||catalogue[k].libelle.toUpperCase().includes(val)).slice(0,3);
+  if(!matches.length){box.style.display='none';return;}
+  box.innerHTML=matches.map(k=>`<div class="suggestion-item" onmousedown="pickConfirmSuggestion('${k}')"><span class="suggestion-ref">${k}</span><span class="suggestion-name">${catalogue[k].libelle}</span></div>`).join('');
+  box.style.display='block';
+}
+
+function pickConfirmSuggestion(ref){
+  document.getElementById('confirm-ref-edit').value=ref;
+  document.getElementById('confirm-suggestions').style.display='none';
+  const art=catalogue[ref];
+  document.getElementById('confirm-libelle').textContent=art?art.libelle:'—';
 }
 function retryOCR(){document.getElementById('confirm-overlay').classList.remove('active');openCamera();}
 
