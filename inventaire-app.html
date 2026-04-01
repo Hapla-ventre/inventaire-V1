@@ -409,10 +409,6 @@ let scanCount=0, camStream=null, ocrWorker=null, ocrReady=false, isScanning=fals
 const userPermissions={};
 let adminThreshold=20;
 
-// ── VERSION ──
-document.getElementById('ver-config').textContent=CONFIG.VERSION;
-document.getElementById('ver-main').textContent=CONFIG.VERSION;
-
 // ── CACHE HORS-LIGNE ──
 const QUEUE_KEY='inv_queue';
 function getQueue(){try{return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');}catch{return[];}}
@@ -483,7 +479,7 @@ async function fetchSheet(sheetName){
 }
 
 // ── UTILISATEURS ──
-async function loadUsers(){
+async async function loadUsers(){
   const sel=document.getElementById('user-select');
   try{
     const json=await fetchSheet(CONFIG.SHEET_REGLAGES);
@@ -566,6 +562,8 @@ async function loadUserCount(){
 
 // ── INIT ──
 function init(){
+  document.getElementById('ver-config').textContent=CONFIG.VERSION;
+  document.getElementById('ver-main').textContent=CONFIG.VERSION;
   const sel=document.getElementById('user-select');
   sel.addEventListener('change',()=>{document.getElementById('btn-start').disabled=!sel.value;});
   document.getElementById('btn-start').addEventListener('click',startSession);
