@@ -479,7 +479,7 @@ async function fetchSheet(sheetName){
 }
 
 // ── UTILISATEURS ──
-async async function loadUsers(){
+async function loadUsers(){
   const sel=document.getElementById('user-select');
   try{
     const json=await fetchSheet(CONFIG.SHEET_REGLAGES);
