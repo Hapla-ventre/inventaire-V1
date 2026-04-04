@@ -126,7 +126,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 #cam-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 #cam-canvas{display:none;}
 .cam-ui{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-.cam-viewfinder{width:min(280px,80vw);height:72px;position:relative;}
+.cam-viewfinder{width:min(300px,85vw);height:110px;position:relative;}
 .cam-viewfinder-inner{position:absolute;inset:0;border:2px solid #1a6fe8;border-radius:10px;box-shadow:0 0 0 4000px rgba(0,0,0,0.6);}
 .cam-viewfinder-inner::before,.cam-viewfinder-inner::after{content:'';position:absolute;width:18px;height:18px;border-color:#fff;border-style:solid;}
 .cam-viewfinder-inner::before{top:-2px;left:-2px;border-width:3px 0 0 3px;border-radius:4px 0 0 0;}
@@ -329,7 +329,7 @@ const CONFIG = {
     <textarea id="correct-comment" class="correct-comment" placeholder="Ex: Erreur d'étiquetage, recompté le…"></textarea>
     <div class="correct-btns">
       <button class="btn-retry" onclick="closeCorrectModal()">Annuler</button>
-      <button class="btn-confirm" onclick="submitCorrection()">Enregistrer</button>
+      <button class="btn-confirm" id="btn-correct-submit" onclick="submitCorrection()" style="display:flex;align-items:center;justify-content:center;gap:8px;"><div class="spinner"></div><span class="btn-text">Enregistrer</span></button>
     </div>
   </div>
 </div>
@@ -677,6 +677,9 @@ async function submitCorrection(){
   const val=parseInt(document.getElementById('correct-input').value);
   if(isNaN(val)||val<0){showToast('Entrez un stock corrigé valide','warn');return;}
   const comment=document.getElementById('correct-comment').value.trim();
+  const btn=document.getElementById('btn-correct-submit');
+  btn.disabled=true;btn.classList.add('loading');
+  showToast('Correction en cours…','');
   const payload={
     action:'correction',
     ref:_correctRef,
@@ -686,12 +689,13 @@ async function submitCorrection(){
     timestamp:localTimestamp()
   };
   try{
-    showToast('Correction en cours…','');
     await sendPayload(payload);
+    btn.disabled=false;btn.classList.remove('loading');
     showToast('Correction enregistrée','success');
     closeCorrectModal();
     setTimeout(loadSuspects, 1000);
   }catch(e){
+    btn.disabled=false;btn.classList.remove('loading');
     showToast('Erreur lors de la correction','error');
   }
 }
@@ -1173,8 +1177,23 @@ async function triggerOCR(){
   const video=document.getElementById('cam-video');const canvas=document.getElementById('cam-canvas');
   if(video.readyState<2){isScanning=false;btn.classList.remove('scanning');return;}
   const vw=video.videoWidth,vh=video.videoHeight;
-  const cropW=Math.round(vw*0.8),cropH=Math.round(vh*0.35);
-  const cropX=Math.round((vw-cropW)/2),cropY=Math.round((vh-cropH)/2)-Math.round(vh*0.08);
+
+  // Mapper le viewfinder écran → coordonnées vidéo (object-fit:cover)
+  const dw=video.clientWidth,dh=video.clientHeight;
+  const videoRatio=vw/vh, displayRatio=dw/dh;
+  let scale,offX=0,offY=0;
+  if(videoRatio>displayRatio){
+    scale=dh/vh; offX=(vw*scale-dw)/2;
+  }else{
+    scale=dw/vw; offY=(vh*scale-dh)/2;
+  }
+  const vf=document.querySelector('.cam-viewfinder').getBoundingClientRect();
+  const pad=20; // marge autour du viewfinder
+  const cropX=Math.max(0,Math.round((vf.left-pad+offX)/scale));
+  const cropY=Math.max(0,Math.round((vf.top-pad+offY)/scale));
+  const cropW=Math.min(vw-cropX,Math.round((vf.width+pad*2)/scale));
+  const cropH=Math.min(vh-cropY,Math.round((vf.height+pad*2)/scale));
+
   canvas.width=cropW;canvas.height=cropH;
   const ctx=canvas.getContext('2d');
   ctx.drawImage(video,cropX,cropY,cropW,cropH,0,0,cropW,cropH);
