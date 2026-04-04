@@ -216,6 +216,10 @@ const CONFIG = {
         </select>
       </div>
     </div>
+    <div id="password-group" style="display:none;">
+      <div class="field-label">Mot de passe</div>
+      <input type="text" id="password-input" class="field-input" placeholder="Entrez le mot de passe" autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
     <button class="btn-primary" id="btn-start" disabled>Commencer l'inventaire</button>
   </div>
 </div>
@@ -340,6 +344,7 @@ const CONFIG = {
       <div class="confirm-ref-label">Référence lue</div>
       <input type="text" id="confirm-ref-edit" class="confirm-ref-edit" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
       <div id="confirm-libelle" class="confirm-libelle">—</div>
+      <div id="ocr-suggestions" style="display:none;"></div>
     </div>
     <div class="confirm-btns">
       <button class="btn-retry" id="btn-retry">Réessayer</button>
@@ -406,6 +411,7 @@ const CONFIG = {
 let currentUser='', catalogue={}, currentRef=null;
 let scanCount=0, camStream=null, ocrWorker=null, ocrReady=false, isScanning=false, lineCount=0;
 const userPermissions={};
+const userPasswords={};
 let adminThreshold=20;
 
 // ── VERSION ──
@@ -502,7 +508,9 @@ async function loadUsers(){
       const name=(row.c[0].v??row.c[0].f??'').toString().trim();
       if(!name)return;
       const perm=(row.c[1]?.v??row.c[1]?.f??'').toString().trim().toLowerCase();
+      const pwd=(row.c[2]?.v??row.c[2]?.f??'').toString().trim();
       userPermissions[name]=perm;
+      userPasswords[name]=pwd;
       const o=document.createElement('option');
       o.value=name;o.textContent=name;
       sel.appendChild(o);
@@ -576,7 +584,12 @@ async function loadUserCount(){
 // ── INIT ──
 function init(){
   const sel=document.getElementById('user-select');
-  sel.addEventListener('change',()=>{document.getElementById('btn-start').disabled=!sel.value;});
+  sel.addEventListener('change',()=>{
+    const name=sel.value;
+    document.getElementById('btn-start').disabled=!name;
+    document.getElementById('password-input').value='';
+    document.getElementById('password-group').style.display=(name&&userPasswords[name])?'block':'none';
+  });
   document.getElementById('btn-start').addEventListener('click',startSession);
   loadUsers();
 
@@ -610,13 +623,23 @@ function init(){
     const lbl=document.getElementById('confirm-libelle');
     lbl.textContent=a?.libelle||(r?'Référence inconnue':'—');
     lbl.style.color=a?.libelle?'var(--text2)':'var(--danger)';
+    showOcrSuggestions(r);
   });
-  addCountLine();
 }
 
 // ── SESSION ──
 async function startSession(){
-  currentUser=document.getElementById('user-select').value;
+  const selectedUser=document.getElementById('user-select').value;
+  const expectedPwd=userPasswords[selectedUser]||'';
+  if(expectedPwd){
+    const enteredPwd=document.getElementById('password-input').value.trim();
+    if(enteredPwd!==expectedPwd){
+      showToast('Mot de passe incorrect','error');
+      document.getElementById('password-input').value='';
+      return;
+    }
+  }
+  currentUser=selectedUser;
   document.getElementById('display-user').textContent=currentUser;
   sessionStorage.setItem('inv_user',currentUser);
   sessionStorage.setItem('inv_perm',userPermissions[currentUser]||'');
@@ -663,6 +686,7 @@ async function submitCorrection(){
     timestamp:localTimestamp()
   };
   try{
+    showToast('Correction en cours…','');
     await sendPayload(payload);
     showToast('Correction enregistrée','success');
     closeCorrectModal();
@@ -871,6 +895,27 @@ function showSuggestions(val){
 }
 function hideSuggestions(){document.getElementById('suggestions').style.display='none';}
 function pickSuggestion(ref){document.getElementById('ref-input').value=ref;hideSuggestions();lookupRef(ref);}
+
+// ── SUGGESTIONS OCR MODAL ──
+function showOcrSuggestions(val){
+  const box=document.getElementById('ocr-suggestions');
+  if(!val||val.length<2){box.style.display='none';return;}
+  const matches=Object.keys(catalogue).filter(k=>k.includes(val)||catalogue[k].libelle.toUpperCase().includes(val)).slice(0,3);
+  if(!matches.length){box.style.display='none';return;}
+  box.className='suggestions';
+  box.style.marginTop='8px';
+  box.innerHTML=matches.map(k=>`<div class="suggestion-item" onmousedown="pickOcrSuggestion('${k}')"><span class="suggestion-ref">${k}</span><span class="suggestion-name">${catalogue[k].libelle}</span></div>`).join('');
+  box.style.display='block';
+}
+function hideOcrSuggestions(){document.getElementById('ocr-suggestions').style.display='none';}
+function pickOcrSuggestion(ref){
+  document.getElementById('confirm-ref-edit').value=ref;
+  const art=catalogue[ref];
+  const lbl=document.getElementById('confirm-libelle');
+  lbl.textContent=art?.libelle||'Référence inconnue';
+  lbl.style.color=art?.libelle?'var(--text2)':'var(--danger)';
+  hideOcrSuggestions();
+}
 
 // ── LOOKUP ──
 function lookupRef(ref){
@@ -1177,16 +1222,18 @@ function showConfirmModal(ref,photoUrl){
   const art=catalogue[ref];
   document.getElementById('confirm-libelle').textContent=art?.libelle||'Référence inconnue';
   document.getElementById('confirm-libelle').style.color=art?.libelle?'var(--text2)':'var(--danger)';
+  showOcrSuggestions(ref);
   document.getElementById('confirm-overlay').classList.add('active');
   setTimeout(()=>document.getElementById('confirm-ref-edit').select(),350);
 }
 
 function confirmOCR(){
   const ref=document.getElementById('confirm-ref-edit').value.trim().toUpperCase();
+  hideOcrSuggestions();
   document.getElementById('confirm-overlay').classList.remove('active');
   if(ref){document.getElementById('ref-input').value=ref;lookupRef(ref);}
 }
-function retryOCR(){document.getElementById('confirm-overlay').classList.remove('active');openCamera();}
+function retryOCR(){hideOcrSuggestions();document.getElementById('confirm-overlay').classList.remove('active');openCamera();}
 
 // ── UTILITAIRES ──
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
