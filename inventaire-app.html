@@ -266,7 +266,7 @@ const CONFIG = {
     </div>
     <div>
       <div class="scan-label" style="margin-bottom:6px;">Zone / Secteur</div>
-      <input type="text" id="zone-scan-input" class="ref-input" style="font-size:16px;letter-spacing:0.02em;text-transform:none;font-family:var(--sans);" placeholder="ex: Rayon A, Réserve…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <input type="text" id="zone-scan-input" class="ref-input" style="font-size:16px;letter-spacing:0.02em;text-transform:uppercase;font-family:var(--sans);" placeholder="ex: RAYON A, RÉSERVE…" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
     </div>
     <div class="divider"></div>
     <div class="qty-section">
@@ -600,6 +600,7 @@ function init(){
     showSuggestions(val);
   });
   document.getElementById('ref-input').addEventListener('blur',()=>{setTimeout(hideSuggestions,200);});
+  document.getElementById('zone-scan-input').addEventListener('blur',e=>{e.target.value=e.target.value.toUpperCase();});
   document.getElementById('btn-validate').addEventListener('click',validate);
   document.getElementById('btn-add-line').addEventListener('click',addCountLine);
   document.querySelectorAll('.unite-btn').forEach(btn=>{
@@ -1054,7 +1055,7 @@ async function validate(){
 
   const ref=currentRef||'???';
   const libelle=catalogue[ref]?.libelle||'';
-  const zone=document.getElementById('zone-scan-input')?.value.trim()||'';
+  const zone=document.getElementById('zone-scan-input')?.value.trim().toUpperCase()||'';
   if(!zone){
     showToast('Renseignez la zone / secteur','warn');
     const zi=document.getElementById('zone-scan-input');
@@ -1169,6 +1170,93 @@ async function openCamera(){
   }catch(e4){showToast('Erreur OCR init: '+e4.message,'error');}
 }
 
+// ── OCR HELPERS ──
+function binarizeCanvas(canvas){
+  const ctx=canvas.getContext('2d');
+  const img=ctx.getImageData(0,0,canvas.width,canvas.height);
+  const d=img.data, gray=new Uint8Array(d.length/4), hist=new Array(256).fill(0);
+  for(let i=0;i<d.length;i+=4){const g=Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);gray[i/4]=g;hist[g]++;}
+  // Otsu threshold
+  const total=gray.length;let sumAll=0;
+  for(let i=0;i<256;i++)sumAll+=i*hist[i];
+  let sumBg=0,wBg=0,maxVar=0,thr=128;
+  for(let t=0;t<256;t++){wBg+=hist[t];if(!wBg)continue;const wFg=total-wBg;if(!wFg)break;sumBg+=t*hist[t];const diff=sumBg/wBg-(sumAll-sumBg)/wFg;const v=wBg*wFg*diff*diff;if(v>maxVar){maxVar=v;thr=t;}}
+  for(let i=0;i<gray.length;i++){const v=gray[i]>thr?255:0;d[i*4]=d[i*4+1]=d[i*4+2]=v;}
+  ctx.putImageData(img,0,0);
+}
+
+function adaptiveBinarize(canvas){
+  const ctx=canvas.getContext('2d');
+  const img=ctx.getImageData(0,0,canvas.width,canvas.height);
+  const d=img.data,w=canvas.width,h=canvas.height;
+  const gray=new Uint8Array(w*h);
+  for(let i=0;i<d.length;i+=4)gray[i/4]=Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
+  // Integral image for fast local mean
+  const integ=new Float64Array((w+1)*(h+1));
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)integ[(y+1)*(w+1)+(x+1)]=gray[y*w+x]+integ[y*(w+1)+(x+1)]+integ[(y+1)*(w+1)+x]-integ[y*(w+1)+x];
+  const r=Math.max(8,Math.round(Math.min(w,h)*0.06));
+  const C=12; // offset
+  for(let y=0;y<h;y++){
+    const y1=Math.max(0,y-r),y2=Math.min(h-1,y+r);
+    for(let x=0;x<w;x++){
+      const x1=Math.max(0,x-r),x2=Math.min(w-1,x+r);
+      const area=(y2-y1+1)*(x2-x1+1);
+      const sum=integ[(y2+1)*(w+1)+(x2+1)]-integ[y1*(w+1)+(x2+1)]-integ[(y2+1)*(w+1)+x1]+integ[y1*(w+1)+x1];
+      const v=gray[y*w+x]>(sum/area-C)?255:0;
+      d[(y*w+x)*4]=d[(y*w+x)*4+1]=d[(y*w+x)*4+2]=v;
+    }
+  }
+  ctx.putImageData(img,0,0);
+}
+
+function levenshtein(a,b){
+  const m=a.length,n=b.length;if(!m)return n;if(!n)return m;
+  const dp=Array.from({length:m+1},()=>new Array(n+1).fill(0));
+  for(let i=0;i<=m;i++)dp[i][0]=i;
+  for(let j=0;j<=n;j++)dp[0][j]=j;
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+  return dp[m][n];
+}
+
+function fuzzyMatchRef(raw){
+  if(!raw||raw.length<3)return raw;
+  const up=raw.toUpperCase();
+  if(catalogue[up])return up;
+  // Substitutions OCR courantes (O↔0, I↔1, S↔5, B↔8, G↔6, Z↔2)
+  const subs=[
+    up,
+    up.replace(/O/g,'0'),
+    up.replace(/0/g,'O'),
+    up.replace(/I/g,'1').replace(/O/g,'0'),
+    up.replace(/S/g,'5'),
+    up.replace(/B/g,'8'),
+    up.replace(/G/g,'6'),
+    up.replace(/Z/g,'2'),
+    up.replace(/O/g,'0').replace(/I/g,'1').replace(/S/g,'5'),
+  ];
+  for(const s of subs)if(catalogue[s])return s;
+  // Levenshtein fuzzy match
+  const maxDist=Math.max(1,Math.floor(up.length*0.25));
+  let best=null,bestD=Infinity;
+  for(const ref of Object.keys(catalogue)){
+    if(Math.abs(ref.length-up.length)>maxDist)continue;
+    const d=levenshtein(up,ref);
+    if(d<bestD){bestD=d;best=ref;}
+  }
+  return bestD<=maxDist?best:up;
+}
+
+async function ocrWithPreprocess(canvas,preprocessFn){
+  const tmp=document.createElement('canvas');
+  tmp.width=canvas.width;tmp.height=canvas.height;
+  tmp.getContext('2d').drawImage(canvas,0,0);
+  preprocessFn(tmp);
+  const{data}=await ocrWorker.recognize(tmp);
+  const cleaned=data.text.replace(/\s/g,'').toUpperCase();
+  const match=cleaned.match(/[A-Z0-9]{3,}/);
+  return{text:match?match[0]:'',confidence:data.confidence||0,data};
+}
+
 async function triggerOCR(){
   if(!ocrReady||isScanning)return;
   isScanning=true;
@@ -1188,7 +1276,7 @@ async function triggerOCR(){
     scale=dw/vw; offY=(vh*scale-dh)/2;
   }
   const vf=document.querySelector('.cam-viewfinder').getBoundingClientRect();
-  const pad=20; // marge autour du viewfinder
+  const pad=20;
   const cropX=Math.max(0,Math.round((vf.left-pad+offX)/scale));
   const cropY=Math.max(0,Math.round((vf.top-pad+offY)/scale));
   const cropW=Math.min(vw-cropX,Math.round((vf.width+pad*2)/scale));
@@ -1199,27 +1287,44 @@ async function triggerOCR(){
   ctx.drawImage(video,cropX,cropY,cropW,cropH,0,0,cropW,cropH);
   const preview=document.createElement('canvas');preview.width=cropW;preview.height=cropH;
   preview.getContext('2d').drawImage(canvas,0,0);
-  ctx.filter='contrast(2.2) brightness(1.15) grayscale(1)';ctx.drawImage(canvas,0,0);
+
   try{
-    const{data}=await ocrWorker.recognize(canvas);
-    const cleaned=data.text.replace(/\s/g,'').toUpperCase();
-    const match=cleaned.match(/[A-Z0-9]{3,}/);
+    // Tentative 1 : binarisation adaptative (meilleur pour ombres)
+    const r1=await ocrWithPreprocess(canvas,adaptiveBinarize);
+    // Tentative 2 : binarisation Otsu (meilleur pour fond uniforme)
+    const r2=await ocrWithPreprocess(canvas,binarizeCanvas);
+    // Tentative 3 : contraste fort classique
+    const r3=await ocrWithPreprocess(canvas,c=>{const x=c.getContext('2d');x.filter='contrast(2.5) brightness(1.2) grayscale(1)';x.drawImage(c,0,0);});
+
+    // Prendre le meilleur résultat (le plus long texte, puis meilleure confiance)
+    const results=[r1,r2,r3].filter(r=>r.text.length>=3);
+    results.sort((a,b)=>{
+      const ma=fuzzyMatchRef(a.text),mb=fuzzyMatchRef(b.text);
+      const inCatA=catalogue[ma]?1:0, inCatB=catalogue[mb]?1:0;
+      if(inCatA!==inCatB)return inCatB-inCatA;
+      return b.confidence-a.confidence;
+    });
+
+    const best=results[0];
     btn.classList.remove('scanning');
-    if(match){
+
+    if(best){
+      const matched=fuzzyMatchRef(best.text);
       let croppedUrl;
       try{
-        const word=data.words&&data.words.find(w=>w.text.replace(/\s/g,'').toUpperCase().includes(match[0].slice(0,4)));
+        const word=best.data.words&&best.data.words.find(w=>w.text.replace(/\s/g,'').toUpperCase().includes(best.text.slice(0,4)));
         if(word&&word.bbox){
-          const b=word.bbox,pad=40;
-          const x=Math.max(0,b.x0-pad),y=Math.max(0,b.y0-pad);
-          const w=Math.min(canvas.width-x,(b.x1-b.x0)+pad*2),h=Math.min(canvas.height-y,(b.y1-b.y0)+pad*2);
+          const b=word.bbox,p2=40;
+          const x=Math.max(0,b.x0-p2),y=Math.max(0,b.y0-p2);
+          const w=Math.min(canvas.width-x,(b.x1-b.x0)+p2*2),h=Math.min(canvas.height-y,(b.y1-b.y0)+p2*2);
           const cc=document.createElement('canvas');cc.width=w;cc.height=h;
           cc.getContext('2d').drawImage(preview,x,y,w,h,0,0,w,h);
           croppedUrl=cc.toDataURL('image/jpeg',0.9);
         }
       }catch{}
-      showConfirmModal(match[0],croppedUrl||preview.toDataURL('image/jpeg',0.8));
+      showConfirmModal(matched||best.text,croppedUrl||preview.toDataURL('image/jpeg',0.8));
     }else{
+      showToast('Aucun texte détecté — réessayez','warn');
       document.getElementById('cam-status').textContent='Prêt — appuyez pour scanner';
       document.getElementById('cam-status').className='cam-status ready';
     }
