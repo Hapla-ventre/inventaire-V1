@@ -208,8 +208,8 @@ const CONFIG = {
   SHEET_ENSEMBLE:   "TABLEAU ENSEMBLE",
   SHEET_INVENTAIRE: "Inventaire V1",
   SHEET_REGLAGES:   "Réglages",
-  APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbyyi8fzIaT2u__MkztUixBjvbytycOujjvlrbmAg8gq_DLYEKgfoBKWE5jf_B0Sc6vYFw/exec",
-  VERSION: "v5.17 — 14/04/2026"
+  APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbwnNxR6hfjBOI-_Jpd0XXVVaI3_xdbPfWIglhYms3kxEMqo2XfwpOoXSdmN7FtkAz3upQ/exec",
+  VERSION: "v5.18 — 14/04/2026"
 };
 </script>
 
@@ -889,13 +889,10 @@ async function loadSuspects(){
 }
 
 // ── SAUVEGARDE AUTOMATIQUE ──
-// ── SAUVEGARDE — état partagé serveur ──
-// L'état actif est dérivé des sessions serveur (session sans endTime = active)
-// Tous les admins voient le même état
+// État partagé côté serveur — visible par tous les admins
 
 function updateBackupToggleUI(sessions){
-  if(!sessions)return;
-  const active=sessions.some(s=>!s.endTime);
+  const active=Array.isArray(sessions)&&sessions.some(function(s){return !s.endTime;});
   const btn=document.getElementById('backup-toggle-btn');
   const dot=document.getElementById('backup-status-dot');
   const lbl=document.getElementById('backup-status-label');
@@ -908,13 +905,17 @@ async function toggleBackup(){
   const btn=document.getElementById('backup-toggle-btn');
   btn.disabled=true;
   try{
-    const sessions=await sendPayload({action:'getBackups'});
-    const currentlyActive=Array.isArray(sessions)?sessions.some(s=>!s.endTime):false;
+    const res=await sendPayload({action:'getBackups'});
+    const sessions=res.sessions||[];
+    const currentlyActive=sessions.some(function(s){return !s.endTime;});
     const newState=!currentlyActive;
     showToast(newState?'Démarrage de la session…':'Clôture de la session…','');
     const ts=localTimestamp();
     await sendPayload({action:newState?'startBackupSession':'endBackupSession',user:currentUser,timestamp:ts});
-    showToast(newState?'Session démarrée — onglet "Debut" créé ✓':'Session clôturée — onglet "Fin" créé ✓',newState?'success':'warn');
+    showToast(
+      newState?'Session démarrée — onglet "Debut" créé ✓':'Session clôturée — onglet "Fin" créé ✓',
+      newState?'success':'warn'
+    );
     await loadBackups();
   }catch(e){
     showToast('Erreur : '+e.message,'error');
@@ -926,15 +927,17 @@ async function toggleBackup(){
 async function loadBackups(){
   const list=document.getElementById('backup-list');
   if(!list)return;
-  list.innerHTML='<div class="admin-empty" style="padding:16px 0;">Chargement…</div>';
+  list.innerHTML='<div class="admin-empty" style="padding:12px 0;">Chargement…</div>';
   try{
-    const sessions=await sendPayload({action:'getBackups'});
-    updateBackupToggleUI(Array.isArray(sessions)?sessions:[]);
-    if(!Array.isArray(sessions)||!sessions.length){
-      list.innerHTML='<div class="admin-empty">Aucune sauvegarde disponible</div>';return;
+    const res=await sendPayload({action:'getBackups'});
+    const sessions=res.sessions||[];
+    updateBackupToggleUI(sessions);
+    if(!sessions.length){
+      list.innerHTML='<div class="admin-empty">Aucune sauvegarde disponible</div>';
+      return;
     }
     list.innerHTML='';
-    sessions.forEach(s=>{
+    sessions.forEach(function(s){
       const dlUrl='https://docs.google.com/spreadsheets/d/'+s.fileId+'/export?format=xlsx';
       const startFmt=_fmtDate(s.startTime);
       const endFmt=s.endTime?_fmtDate(s.endTime):'En cours…';
@@ -943,6 +946,8 @@ async function loadBackups(){
       item.className='backup-item';
       item.style.flexWrap='wrap';
       item.style.gap='8px';
+      const nameEsc=s.fileName.replace(/'/g,"\\'");
+      const idEsc=s.fileId.replace(/'/g,"\\'");
       item.innerHTML=
         '<div style="flex:1;min-width:0;">'+
           '<div style="font-size:13px;font-weight:500;color:var(--text);">'+s.fileName+activeDot+'</div>'+
@@ -951,7 +956,7 @@ async function loadBackups(){
         '</div>'+
         '<div style="display:flex;gap:6px;align-items:center;">'+
           '<a href="'+dlUrl+'" target="_blank" class="btn-backup-dl">Excel ↓</a>'+
-          '<button onclick="confirmDeleteBackup(''+s.fileId+'',''+s.fileName+'')" style="background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger);border-radius:var(--r-sm);font-size:11px;font-weight:600;padding:6px 10px;cursor:pointer;white-space:nowrap;">Supprimer</button>'+
+          '<button onclick="confirmDeleteBackup(\''+idEsc+'\',\''+nameEsc+'\')" style="background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger);border-radius:var(--r-sm);font-size:11px;font-weight:600;padding:6px 10px;cursor:pointer;white-space:nowrap;">Supprimer</button>'+
         '</div>';
       list.appendChild(item);
     });
@@ -962,7 +967,7 @@ async function loadBackups(){
 }
 
 // ── SUPPRESSION BACKUP ──
-let _deleteFileId='',_deleteFileName='';
+var _deleteFileId='',_deleteFileName='';
 function confirmDeleteBackup(fileId,fileName){
   _deleteFileId=fileId;_deleteFileName=fileName;
   document.getElementById('delete-backup-name').textContent=fileName;
@@ -977,17 +982,22 @@ async function doDeleteBackup(){
   if(!_deleteFileId)return;
   try{
     await sendPayload({action:'deleteBackup',fileId:_deleteFileId,user:currentUser});
-    showToast('Sauvegarde supprimée de la liste','success');
+    showToast('Sauvegarde retirée de la liste','success');
     await loadBackups();
   }catch(e){
-    showToast('Erreur suppression : '+e.message,'error');
+    showToast('Erreur : '+e.message,'error');
+  }finally{
+    _deleteFileId='';_deleteFileName='';
   }
-  _deleteFileId='';_deleteFileName='';
 }
 
 function _fmtDate(str){
   if(!str)return '—';
-  try{const d=new Date(str);return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}catch{return str;}
+  try{
+    var d=new Date(str);
+    return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})+
+      ' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){return str;}
 }
 // ── SUGGESTIONS ──
 function showSuggestions(val){
