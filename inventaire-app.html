@@ -187,6 +187,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .correct-comment{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--sans);font-size:14px;padding:12px;outline:none;margin-bottom:16px;resize:none;height:72px;}
 .correct-comment:focus{border-color:var(--accent);}
 .correct-btns{display:flex;gap:10px;}
+/* ── BACKUP ── */
 .backup-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px;}
 .backup-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .backup-toggle-btn{background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);font-family:var(--sans);font-size:13px;font-weight:600;padding:8px 16px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background 0.2s;}
@@ -276,7 +277,7 @@ const CONFIG = {
     </div>
     <div>
       <div class="scan-label" style="margin-bottom:6px;">Zone / Secteur</div>
-      <input type="text" id="zone-scan-input" class="ref-input" style="font-size:16px;letter-spacing:0.02em;text-transform:none;font-family:var(--sans);" placeholder="ex: RAYON A, RÉSERVE…" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+      <input type="text" id="zone-scan-input" class="ref-input" style="font-size:16px;letter-spacing:0.02em;text-transform:uppercase;font-family:var(--sans);" placeholder="ex: RAYON A, RÉSERVE…" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
     </div>
     <div class="divider"></div>
     <div class="qty-section">
@@ -289,7 +290,7 @@ const CONFIG = {
       <div id="colisage-warning" style="display:none;background:var(--danger-dim);border:1.5px solid var(--danger);border-radius:var(--r-sm);padding:12px 14px;color:var(--danger);font-size:13px;font-weight:600;">
   ⚠️ Colisage spécial — renseignez votre unité de comptage
 </div>
-<div class="unite-row" id="unite-row" style="display:none;">
+      <div class="unite-row" id="unite-row" style="display:none;">
         <div class="unite-label">Unité de comptage</div>
         <div class="unite-btns">
           <button class="unite-btn active" data-val="1">Unité</button>
@@ -335,10 +336,8 @@ const CONFIG = {
         <button id="backup-toggle-btn" class="backup-toggle-btn" onclick="toggleBackup()">Activer</button>
       </div>
     </div>
-    <div id="backup-list-section">
-      <div class="admin-section-title" style="margin-top:4px;">Historique des sauvegardes</div>
-      <div id="backup-list"><div class="admin-empty">Aucune sauvegarde disponible</div></div>
-    </div>
+    <div class="admin-section-title" style="margin-top:4px;">Historique des sauvegardes</div>
+    <div id="backup-list"><div class="admin-empty">Aucune sauvegarde disponible</div></div>
   </div>
 </div>
 
@@ -449,10 +448,21 @@ const QUEUE_KEY='inv_queue';
 function getQueue(){try{return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');}catch{return[];}}
 function saveQueue(q){localStorage.setItem(QUEUE_KEY,JSON.stringify(q));}
 
+function localTimestamp(){
+  const d=new Date(),p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
+}
+
 async function sendPayload(payload){
-  const form=new FormData();
-  form.append('data',JSON.stringify(payload));
-  await fetch(CONFIG.APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',body:form});
+  const res=await fetch(CONFIG.APPS_SCRIPT_URL,{
+    method:'POST',
+    redirect:'follow',
+    body:JSON.stringify(payload)
+  });
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const result=await res.json();
+  if(!result.ok)throw new Error(result.error||'Erreur serveur');
+  return result;
 }
 
 async function flushQueue(){
@@ -532,8 +542,6 @@ async function loadUsers(){
       sel.appendChild(o);
     });
     if(!Object.keys(userPermissions).length)showToast('Aucun utilisateur dans Réglages','warn');
-
-    // Restaurer session
     const saved=sessionStorage.getItem('inv_user');
     if(saved&&userPermissions.hasOwnProperty(saved)){
       currentUser=saved;
@@ -546,7 +554,7 @@ async function loadUsers(){
       loadCatalogue();
       loadUserCount();
       restoreLogs();
-      if(!document.getElementById('count-lines').children.length) addCountLine();
+      if(!document.getElementById('count-lines').children.length)addCountLine();
       if(navigator.onLine)setTimeout(flushQueue,2000);
     }
   }catch(e){
@@ -564,7 +572,6 @@ async function loadCatalogue(){
       const ref=raw.toString().replace(/\.0$/,'').trim().toUpperCase();
       const lib=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
       const stock=row.c[2]?.v??null;
-      // Colonne F : colisage spécifique (1 = afficher les unités de comptage)
       const colisage=row.c[5]?.v??null;
       if(ref)catalogue[ref]={libelle:lib,stock,type:'BASE',colisage:colisage==1};
     });
@@ -575,7 +582,6 @@ async function loadCatalogue(){
       const raw=row.c[0].v??row.c[0].f??'';
       const ref=raw.toString().replace(/\.0$/,'').trim().toUpperCase();
       const lib=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
-      // Colonne E : colisage spécifique
       const colisage=row.c[4]?.v??null;
       if(ref&&!seen.has(ref)){seen.add(ref);catalogue[ref]={libelle:lib,stock:null,type:'ENSEMBLE',colisage:colisage==1};}
     });
@@ -608,7 +614,6 @@ function init(){
   });
   document.getElementById('btn-start').addEventListener('click',startSession);
   loadUsers();
-
   document.getElementById('ref-input').addEventListener('input',e=>{
     clearTimeout(window._rd);
     const val=e.target.value.trim().toUpperCase();
@@ -657,6 +662,7 @@ async function startSession(){
       return;
     }
   }
+  currentUser=selectedUser;
   document.getElementById('display-user').textContent=currentUser;
   sessionStorage.setItem('inv_user',currentUser);
   sessionStorage.setItem('inv_perm',userPermissions[currentUser]||'');
@@ -672,44 +678,34 @@ async function startSession(){
 }
 
 // ── ADMIN ──
-// ── CORRECTION ADMIN ──
-let _correctRef='', _correctSa=0, _correctSb=0;
+let _correctRef='',_correctSa=0,_correctSb=0;
 
-function openCorrectModal(ref, name, sa, sb){
-  _correctRef=ref; _correctSa=sa; _correctSb=sb;
+function openCorrectModal(ref,name,sa,sb){
+  _correctRef=ref;_correctSa=sa;_correctSb=sb;
   document.getElementById('correct-ref-label').textContent=ref+' — '+name;
   document.getElementById('correct-avant').textContent=sa;
   document.getElementById('correct-compte').textContent=sb;
   document.getElementById('correct-input').value='';
   document.getElementById('correct-comment').value='';
   document.getElementById('correct-modal').classList.add('active');
-  setTimeout(()=>document.getElementById('correct-input').focus(), 300);
+  setTimeout(()=>document.getElementById('correct-input').focus(),300);
 }
 
-function closeCorrectModal(){
-  document.getElementById('correct-modal').classList.remove('active');
-}
+function closeCorrectModal(){document.getElementById('correct-modal').classList.remove('active');}
 
 async function submitCorrection(){
   const val=parseInt(document.getElementById('correct-input').value);
   if(isNaN(val)||val<0){showToast('Entrez un stock corrigé valide','warn');return;}
   const comment=document.getElementById('correct-comment').value.trim();
-  const payload={
-    action:'correction',
-    ref:_correctRef,
-    correction:val,
-    commentaire:comment,
-    user:currentUser,
-    timestamp:localTimestamp()
-  };
+  const btn=document.getElementById('btn-correct-submit');
   btn.disabled=true;btn.classList.add('loading');
-  showToast('Correction en cours…','');
+  const payload={action:'correction',ref:_correctRef,correction:val,commentaire:comment,user:currentUser,timestamp:localTimestamp()};
   try{
     await sendPayload(payload);
     btn.disabled=false;btn.classList.remove('loading');
     showToast('Correction enregistrée','success');
     closeCorrectModal();
-    setTimeout(loadSuspects, 1000);
+    setTimeout(loadSuspects,1000);
   }catch(e){
     btn.disabled=false;btn.classList.remove('loading');
     showToast('Erreur lors de la correction','error');
@@ -756,23 +752,19 @@ async function loadEnsembles(){
     });
     if(!rows.length){list.innerHTML='<div class="admin-empty">Aucun ensemble à décomposer</div>';return;}
     list.innerHTML='';
-    const ensData=[];
     rows.forEach(row=>{
-      const ref =(row.c[0]?.v??row.c[0]?.f??'').toString().trim();
+      const ref=(row.c[0]?.v??row.c[0]?.f??'').toString().trim();
       const name=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
-      const qty =row.c[2]?.v||0;
+      const qty=row.c[2]?.v||0;
       const user=(row.c[6]?.v??row.c[6]?.f??'').toString().trim();
-      const ts  =(row.c[7]?.v??row.c[7]?.f??'').toString().trim();
+      const ts=(row.c[7]?.v??row.c[7]?.f??'').toString().trim();
       const zone=(row.c[5]?.v??row.c[5]?.f??'').toString().trim();
-      ensData.push({ref,name,qty,user,ts,zone});
-    });
-    ensData.forEach((d,i)=>{
       const item=document.createElement('div');
       item.className='ensemble-item';
-      item.innerHTML=`<div class="ensemble-ref">${d.ref}</div><div class="ensemble-name">${d.name}</div><div style="font-size:11px;color:var(--text2);margin-top:4px;">Qté: ${d.qty} — ${d.user}</div>`;
+      item.innerHTML=`<div class="ensemble-ref">${ref}</div><div class="ensemble-name">${name}</div><div style="font-size:11px;color:var(--text2);margin-top:4px;">Qté: ${qty} — ${user}</div>`;
       const btn=document.createElement('button');
       btn.className='btn-decompose';btn.textContent='Décomposer en bases';
-      btn.addEventListener('click',()=>doDecompose(d.ref,d.qty,d.zone,d.ts));
+      btn.addEventListener('click',()=>doDecompose(ref,qty,zone,ts));
       item.appendChild(btn);list.appendChild(item);
     });
   }catch(e){list.innerHTML='<div class="admin-empty">Erreur de chargement</div>';}
@@ -780,9 +772,8 @@ async function loadEnsembles(){
 
 async function doDecompose(ref,qty,zone,timestamp){
   showToast('Décomposition en cours…','');
-  const payload={action:'decompose',ref,qty,zone,user:currentUser,conditionnement:'Unité',timestamp};
   try{
-    await sendPayload(payload);
+    await sendPayload({action:'decompose',ref,qty,zone,user:currentUser,conditionnement:'Unité',timestamp});
     showToast('Ensemble décomposé en bases','success');
     loadEnsembles();
   }catch(e){showToast('Erreur lors de la décomposition','error');}
@@ -796,7 +787,7 @@ async function checkSuspectsNotif(){
     const rows=json.table.rows||[];
     const count=rows.filter(row=>{
       if(!row||!row.c)return false;
-      const sa=row.c[2]?.v, sb=row.c[3]?.v;
+      const sa=row.c[2]?.v,sb=row.c[3]?.v;
       if(sa===null||sa===undefined||sa===0)return false;
       if(sb===null||sb===undefined)return false;
       return Math.abs((sb-sa)/sa)*100>=adminThreshold;
@@ -811,7 +802,6 @@ async function checkSuspectsNotif(){
 
 async function loadSuspects(){
   const list=document.getElementById('suspect-list');
-  // Ne pas vider pendant le rechargement pour éviter le clignotement
   try{
     const urlR=`https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&headers=0&sheet=${encodeURIComponent(CONFIG.SHEET_REGLAGES)}`;
     const resR=await fetch(urlR);
@@ -824,8 +814,6 @@ async function loadSuspects(){
       if(k2!==null&&k2!==undefined)adminThreshold=Number(k2);
     }
     document.getElementById('suspect-threshold').textContent=`Seuil : ±${adminThreshold}% (cellule K2 de l'onglet Réglages)`;
-
-    // Charger stock avant depuis STOCKS BASES
     const jsonB=await fetchSheet(CONFIG.SHEET_BASES);
     const stockAvant={};
     (jsonB.table.rows||[]).forEach(row=>{
@@ -834,12 +822,9 @@ async function loadSuspects(){
       const stock=row.c[2]?.v??null;
       if(ref&&stock!==null)stockAvant[ref]=stock;
     });
-
-    // Charger stock compté depuis Inventaire V1 (sommer par ref)
     const json=await fetchSheet(CONFIG.SHEET_INVENTAIRE);
     const rows=json.table.rows||[];
-    const stockCompte={};
-    const stockUser={};
+    const stockCompte={},stockUser={};
     rows.forEach(row=>{
       if(!row||!row.c||!row.c[0])return;
       const ref=(row.c[0]?.v??row.c[0]?.f??'').toString().trim().toUpperCase();
@@ -849,25 +834,20 @@ async function loadSuspects(){
       stockCompte[ref]=(stockCompte[ref]||0)+qty;
       stockUser[ref]=user;
     });
-
-    // Charger corrections depuis ANALYSE colonne E
     const corrections={};
     try{
       const jsonA=await fetchSheet('ANALYSE');
       (jsonA.table.rows||[]).forEach(row=>{
         if(!row||!row.c||!row.c[0])return;
         const ref=(row.c[0].v??row.c[0].f??'').toString().trim().toUpperCase();
-        const corr=row.c[4]?.v??null; // colonne E
+        const corr=row.c[4]?.v??null;
         if(ref&&corr!==null)corrections[ref]=corr;
       });
     }catch(e){}
-
     const suspects=[];
     Object.keys(stockAvant).forEach(ref=>{
-      const sa=stockAvant[ref];
-      const sb=stockCompte[ref];
+      const sa=stockAvant[ref],sb=stockCompte[ref];
       if(sb===undefined||sb===null||sa===0)return;
-      // Prendre correction si elle existe
       const corr=corrections[ref]??null;
       const stockFinal=corr!==null?corr:sb;
       const delta=((stockFinal-sa)/sa)*100;
@@ -876,7 +856,6 @@ async function loadSuspects(){
     });
     if(!suspects.length){list.innerHTML='<div class="admin-empty">Aucun comptage suspect 🎉</div>';return;}
     suspects.sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
-    // Mettre à jour sans vider (rafraichissement invisible)
     list.innerHTML='';
     suspects.forEach(s=>{
       const item=document.createElement('div');
@@ -885,24 +864,84 @@ async function loadSuspects(){
       const sign=s.delta>0?'+':'';
       const cls=s.delta>0?'pos':'neg';
       const corrLabel=s.corr!==null?` (corrigé: ${s.corr})`:'';
-      item.innerHTML=`
-        <div class="suspect-ref">${s.ref}</div>
-        <div class="suspect-name">${s.name}</div>
-        <div class="suspect-row">
-          <span class="suspect-delta ${cls}">${sign}${s.delta.toFixed(1)}%</span>
-          <span class="suspect-user">${s.user}</span>
-        </div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--text2);margin-top:4px;">
-          Stock avant : <strong>${s.sa}</strong> → Stock compté : <strong>${s.sb}</strong>${corrLabel}
-        </div>`;
+      item.innerHTML=`<div class="suspect-ref">${s.ref}</div><div class="suspect-name">${s.name}</div><div class="suspect-row"><span class="suspect-delta ${cls}">${sign}${s.delta.toFixed(1)}%</span><span class="suspect-user">${s.user}</span></div><div style="font-family:var(--mono);font-size:11px;color:var(--text2);margin-top:4px;">Stock avant : <strong>${s.sa}</strong> → Stock compté : <strong>${s.sb}</strong>${corrLabel}</div>`;
       const btn=document.createElement('button');
-      btn.className='btn-correct';
-      btn.textContent='Corriger le stock';
+      btn.className='btn-correct';btn.textContent='Corriger le stock';
       btn.addEventListener('click',()=>openCorrectModal(s.ref,s.name,s.sa,s.sb));
-      item.appendChild(btn);
-      list.appendChild(item);
+      item.appendChild(btn);list.appendChild(item);
     });
   }catch(e){list.innerHTML='<div class="admin-empty">Erreur de chargement</div>';}
+}
+
+// ── SAUVEGARDE AUTOMATIQUE ──
+const BACKUP_ACTIVE_KEY='inv_backup_active';
+const BACKUP_SESSIONS_KEY='inv_backup_sessions';
+
+function isBackupActive(){return localStorage.getItem(BACKUP_ACTIVE_KEY)==='1';}
+function getLocalSessions(){try{return JSON.parse(localStorage.getItem(BACKUP_SESSIONS_KEY)||'[]');}catch{return[];}}
+function saveLocalSessions(s){localStorage.setItem(BACKUP_SESSIONS_KEY,JSON.stringify(s));}
+
+function updateBackupToggleUI(){
+  const btn=document.getElementById('backup-toggle-btn');
+  const dot=document.getElementById('backup-status-dot');
+  const lbl=document.getElementById('backup-status-label');
+  const active=isBackupActive();
+  if(btn){btn.textContent=active?'Désactiver':'Activer';btn.classList.toggle('active',active);}
+  if(dot){dot.className='backup-status-dot '+(active?'on':'off');}
+  if(lbl){lbl.textContent=active?'Actif — sauvegarde toutes les heures':'Inactif — cliquez pour démarrer';}
+}
+
+async function toggleBackup(){
+  const active=isBackupActive();
+  const newState=!active;
+  const btn=document.getElementById('backup-toggle-btn');
+  btn.disabled=true;
+  showToast(newState?'Démarrage de la session…':'Clôture de la session…','');
+  try{
+    const ts=localTimestamp();
+    const result=await sendPayload({action:newState?'startBackupSession':'endBackupSession',user:currentUser,timestamp:ts});
+    if(newState){
+      const sessions=getLocalSessions();
+      sessions.unshift({fileId:result.fileId,fileName:result.fileName,startTime:ts,endTime:null});
+      saveLocalSessions(sessions);
+      showToast('Session démarrée — onglet "Debut" créé ✓','success');
+    }else{
+      const sessions=getLocalSessions();
+      const idx=sessions.findIndex(s=>!s.endTime);
+      if(idx>=0){sessions[idx].endTime=ts;saveLocalSessions(sessions);}
+      showToast('Session clôturée — onglet "Fin" créé ✓','success');
+    }
+    localStorage.setItem(BACKUP_ACTIVE_KEY,newState?'1':'0');
+    updateBackupToggleUI();
+    loadBackups();
+  }catch(e){
+    showToast('Erreur : '+e.message,'error');
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+function loadBackups(){
+  const list=document.getElementById('backup-list');
+  if(!list)return;
+  const sessions=getLocalSessions();
+  if(!sessions.length){list.innerHTML='<div class="admin-empty">Aucune sauvegarde disponible</div>';return;}
+  list.innerHTML='';
+  sessions.forEach(s=>{
+    const dlUrl='https://docs.google.com/spreadsheets/d/'+s.fileId+'/export?format=xlsx';
+    const startFmt=_fmtDate(s.startTime);
+    const endFmt=s.endTime?_fmtDate(s.endTime):'En cours…';
+    const dot=s.endTime?'':'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--found);margin-left:6px;vertical-align:middle;box-shadow:0 0 4px rgba(26,138,58,0.5);"></span>';
+    const item=document.createElement('div');
+    item.className='backup-item';
+    item.innerHTML='<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:500;color:var(--text);">'+s.fileName+dot+'</div><div style="font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:3px;">Début : '+startFmt+'</div><div style="font-family:var(--mono);font-size:10px;color:var(--text2);">Fin : '+endFmt+'</div></div><a href="'+dlUrl+'" target="_blank" class="btn-backup-dl">Excel ↓</a>';
+    list.appendChild(item);
+  });
+}
+
+function _fmtDate(str){
+  if(!str)return '—';
+  try{const d=new Date(str);return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}catch{return str;}
 }
 
 // ── SUGGESTIONS ──
@@ -918,7 +957,6 @@ function showSuggestions(val){
 function hideSuggestions(){document.getElementById('suggestions').style.display='none';}
 function pickSuggestion(ref){document.getElementById('ref-input').value=ref;hideSuggestions();lookupRef(ref);}
 
-// ── SUGGESTIONS OCR MODAL ──
 function showOcrSuggestions(val){
   const box=document.getElementById('ocr-suggestions');
   if(!val||val.length<2){box.style.display='none';return;}
@@ -960,18 +998,15 @@ function lookupRef(ref){
     document.getElementById('article-meta').textContent=ref;
     const t=art.type||'BASE';
     document.getElementById('article-type-badge').innerHTML=`<span class="type-badge ${t.toLowerCase()}">${t}</span>`;
-    // Afficher/masquer unité de comptage selon colisage
     const uniteRow=document.getElementById('unite-row');
     const colisageWarn=document.getElementById('colisage-warning');
     if(art.colisage){
       if(uniteRow)uniteRow.style.display='block';
       if(colisageWarn)colisageWarn.style.display='block';
-      // Ne pas présélectionner — forcer le choix
       document.querySelectorAll('.unite-btn').forEach(b=>b.classList.remove('active'));
     }else{
       if(uniteRow)uniteRow.style.display='none';
       if(colisageWarn)colisageWarn.style.display='none';
-      // Forcer Unité par défaut
       document.querySelectorAll('.unite-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
       document.getElementById('mult-custom').style.display='none';
     }
@@ -1032,14 +1067,11 @@ function updateTotal(){
 async function validate(){
   const btn=document.getElementById('btn-validate');
   btn.disabled=true;btn.classList.add('loading');
-
   const activeUnite=document.querySelector('.unite-btn.active');
   const uniteVal=activeUnite?activeUnite.dataset.val:null;
-  // Si colisage spécial affiché et aucun bouton sélectionné → bloquer
   const colisageVisible=document.getElementById('unite-row').style.display!=='none';
   if(colisageVisible&&!uniteVal){
     showToast("Renseignez l'unité de comptage",'warn');
-    document.getElementById('colisage-warning').style.animation='pulse 0.3s ease';
     btn.disabled=false;btn.classList.remove('loading');return;
   }
   if(uniteVal==='custom'){
@@ -1052,12 +1084,10 @@ async function validate(){
       mc.focus();btn.disabled=false;btn.classList.remove('loading');return;
     }
   }
-
   let conditionnement;
   if(!uniteVal||uniteVal==='1')conditionnement='Unité';
   else if(uniteVal==='2')conditionnement='Paire';
   else conditionnement='Lot de '+parseInt(document.getElementById('mult-custom').value);
-
   const lignes=[];
   let qtyTotal=0;
   document.querySelectorAll('#count-lines .count-line').forEach(line=>{
@@ -1068,10 +1098,9 @@ async function validate(){
     qtyTotal+=qc*nc;
   });
   if(!lignes.length){lignes.push('1 colis de 1');qtyTotal=1;}
-
   const ref=currentRef||'???';
   const libelle=catalogue[ref]?.libelle||'';
-  const zone=document.getElementById('zone-scan-input')?.value.trim()||'';
+  const zone=document.getElementById('zone-scan-input')?.value.trim().toUpperCase()||'';
   if(!zone){
     showToast('Renseignez la zone / secteur','warn');
     const zi=document.getElementById('zone-scan-input');
@@ -1079,14 +1108,7 @@ async function validate(){
     zi.addEventListener('input',function ze(){zi.style.borderColor='';zi.removeEventListener('input',ze);});
     zi.focus();btn.disabled=false;btn.classList.remove('loading');return;
   }
-  const payload={
-    action:'addScan',ref,libelle,qty:qtyTotal,conditionnement,
-    detailComptage:lignes.join('\n'),zone,
-    stockBefore:catalogue[ref]?.stock??null,
-    user:currentUser,
-    timestamp:localTimestamp()
-  };
-
+  const payload={action:'addScan',ref,libelle,qty:qtyTotal,conditionnement,detailComptage:lignes.join('\n'),zone,user:currentUser,timestamp:localTimestamp()};
   const localId=Date.now()+Math.random().toString(36).slice(2);
   const name=libelle||ref;
   if(navigator.onLine){
@@ -1127,7 +1149,6 @@ function resetScan(){
   document.getElementById('mult-custom').value='';
   document.getElementById('unite-row').style.display='none';
   document.getElementById('colisage-warning').style.display='none';
-  document.querySelectorAll('.unite-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
   hideSuggestions();
   const zi=document.getElementById('zone-scan-input');if(zi)zi.value='';
 }
@@ -1151,31 +1172,16 @@ function restoreLogs(){
 
 // ── CAMÉRA ──
 async function openCamera(){
-  // Étape 1 : vérifier l'API
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-    showToast('API caméra absente','error'); return;
-  }
-  // Étape 2 : obtenir le flux
-  try{
-    camStream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}
-    });
-  }catch(e1){
-    try{
-      camStream=await navigator.mediaDevices.getUserMedia({video:true});
-    }catch(e2){
-      showToast(e2.name+': '+e2.message,'error'); return;
-    }
-  }
-  // Étape 3 : attacher au <video>
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){showToast('API caméra absente','error');return;}
+  try{camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}});}
+  catch(e1){try{camStream=await navigator.mediaDevices.getUserMedia({video:true});}catch(e2){showToast(e2.name+': '+e2.message,'error');return;}}
   try{
     const vid=document.getElementById('cam-video');
     vid.srcObject=camStream;
     document.getElementById('cam-overlay').classList.add('active');
     document.getElementById('cam-status').textContent='Initialisation OCR…';
     document.getElementById('cam-status').className='cam-status';
-  }catch(e3){showToast('Erreur video: '+e3.message,'error'); return;}
-  // Étape 4 : init Tesseract
+  }catch(e3){showToast('Erreur video: '+e3.message,'error');return;}
   try{
     if(!ocrWorker){
       ocrWorker=await Tesseract.createWorker('eng',1,{logger:()=>{}});
@@ -1191,7 +1197,7 @@ async function openCamera(){
 function binarizeCanvas(canvas){
   const ctx=canvas.getContext('2d');
   const img=ctx.getImageData(0,0,canvas.width,canvas.height);
-  const d=img.data, gray=new Uint8Array(d.length/4), hist=new Array(256).fill(0);
+  const d=img.data,gray=new Uint8Array(d.length/4),hist=new Array(256).fill(0);
   for(let i=0;i<d.length;i+=4){const g=Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);gray[i/4]=g;hist[g]++;}
   const total=gray.length;let sumAll=0;
   for(let i=0;i<256;i++)sumAll+=i*hist[i];
@@ -1209,8 +1215,7 @@ function adaptiveBinarize(canvas){
   for(let i=0;i<d.length;i+=4)gray[i/4]=Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
   const integ=new Float64Array((w+1)*(h+1));
   for(let y=0;y<h;y++)for(let x=0;x<w;x++)integ[(y+1)*(w+1)+(x+1)]=gray[y*w+x]+integ[y*(w+1)+(x+1)]+integ[(y+1)*(w+1)+x]-integ[y*(w+1)+x];
-  const r=Math.max(8,Math.round(Math.min(w,h)*0.06));
-  const C=12;
+  const r=Math.max(8,Math.round(Math.min(w,h)*0.06));const C=12;
   for(let y=0;y<h;y++){
     const y1=Math.max(0,y-r),y2=Math.min(h-1,y+r);
     for(let x=0;x<w;x++){
@@ -1269,7 +1274,7 @@ async function triggerOCR(){
   if(video.readyState<2){isScanning=false;btn.classList.remove('scanning');return;}
   const vw=video.videoWidth,vh=video.videoHeight;
   const dw=video.clientWidth,dh=video.clientHeight;
-  const videoRatio=vw/vh, displayRatio=dw/dh;
+  const videoRatio=vw/vh,displayRatio=dw/dh;
   let scale,offX=0,offY=0;
   if(videoRatio>displayRatio){scale=dh/vh;offX=(vw*scale-dw)/2;}
   else{scale=dw/vw;offY=(vh*scale-dh)/2;}
@@ -1291,7 +1296,7 @@ async function triggerOCR(){
     const results=[r1,r2,r3].filter(r=>r.text.length>=3);
     results.sort((a,b)=>{
       const ma=fuzzyMatchRef(a.text),mb=fuzzyMatchRef(b.text);
-      const inCatA=catalogue[ma]?1:0, inCatB=catalogue[mb]?1:0;
+      const inCatA=catalogue[ma]?1:0,inCatB=catalogue[mb]?1:0;
       if(inCatA!==inCatB)return inCatB-inCatA;
       return b.confidence-a.confidence;
     });
@@ -1347,120 +1352,6 @@ function confirmOCR(){
   if(ref){document.getElementById('ref-input').value=ref;lookupRef(ref);}
 }
 function retryOCR(){hideOcrSuggestions();document.getElementById('confirm-overlay').classList.remove('active');openCamera();}
-
-
-// ── SAUVEGARDE AUTOMATIQUE ──
-// ── SAUVEGARDE AUTOMATIQUE ──
-const BACKUP_ACTIVE_KEY = 'inv_backup_active';
-
-function isBackupActive(){return localStorage.getItem(BACKUP_ACTIVE_KEY)==='1';}
-
-function updateBackupToggleUI(){
-  const btn=document.getElementById('backup-toggle-btn');
-  const dot=document.getElementById('backup-status-dot');
-  const lbl=document.getElementById('backup-status-label');
-  const active=isBackupActive();
-  if(btn){btn.textContent=active?'Désactiver':'Activer';btn.classList.toggle('active',active);}
-  if(dot){dot.className='backup-status-dot '+(active?'on':'off');}
-  if(lbl){lbl.textContent=active?'Actif — sauvegarde toutes les heures':'Inactif — cliquez pour démarrer';}
-}
-
-// Appel Apps Script avec réponse lisible (CORS-safe via redirect suivi)
-async function sendPayloadReadable(payload){
-  const form=new FormData();
-  form.append('data',JSON.stringify(payload));
-  const res=await fetch(CONFIG.APPS_SCRIPT_URL,{method:'POST',body:form,redirect:'follow'});
-  const text=await res.text();
-  try{return JSON.parse(text);}catch{return {ok:false,error:text};}
-}
-
-const BACKUP_SESSIONS_KEY='inv_backup_sessions';
-
-function getLocalSessions(){
-  try{return JSON.parse(localStorage.getItem(BACKUP_SESSIONS_KEY)||'[]');}catch{return[];}
-}
-function saveLocalSessions(sessions){
-  localStorage.setItem(BACKUP_SESSIONS_KEY,JSON.stringify(sessions));
-}
-
-async function toggleBackup(){
-  const active=isBackupActive();
-  const newState=!active;
-  const btn=document.getElementById('backup-toggle-btn');
-  btn.disabled=true;
-  showToast(newState?'Démarrage de la session…':'Clôture de la session…','');
-  try{
-    const ts=new Date(Date.now()+3600000).toISOString().replace('T',' ').slice(0,19);
-    const result=await sendPayloadReadable({
-      action: newState?'startBackupSession':'endBackupSession',
-      user: currentUser, timestamp: ts
-    });
-    if(!result.ok){
-      showToast('Erreur : '+(result.error||'inconnue'),'error');
-      return;
-    }
-    if(newState){
-      // Stocker la nouvelle session localement avec le fileId retourné
-      const sessions=getLocalSessions();
-      sessions.unshift({
-        fileId: result.fileId,
-        fileName: result.fileName,
-        startTime: ts,
-        endTime: null
-      });
-      saveLocalSessions(sessions);
-      showToast('Session démarrée — onglet "Debut" créé ✓','success');
-    }else{
-      // Marquer la session en cours comme terminée
-      const sessions=getLocalSessions();
-      const idx=sessions.findIndex(s=>!s.endTime);
-      if(idx>=0){sessions[idx].endTime=ts;saveLocalSessions(sessions);}
-      showToast('Session clôturée — onglet "Fin" créé ✓','success');
-    }
-    localStorage.setItem(BACKUP_ACTIVE_KEY,newState?'1':'0');
-    updateBackupToggleUI();
-    loadBackups();
-  }catch(e){
-    showToast('Erreur réseau : '+e.message,'error');
-  }finally{
-    btn.disabled=false;
-  }
-}
-
-function loadBackups(){
-  const list=document.getElementById('backup-list');
-  if(!list)return;
-  const sessions=getLocalSessions();
-  if(!sessions.length){
-    list.innerHTML='<div class="admin-empty">Aucune sauvegarde disponible</div>';return;
-  }
-  list.innerHTML='';
-  sessions.forEach(s=>{
-    const dlUrl='https://docs.google.com/spreadsheets/d/'+s.fileId+'/export?format=xlsx';
-    const startFmt=_fmtDate(s.startTime);
-    const endFmt=s.endTime?_fmtDate(s.endTime):'En cours…';
-    const statusDot=s.endTime?'':'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--found);margin-left:6px;vertical-align:middle;box-shadow:0 0 4px rgba(26,138,58,0.5);"></span>';
-    const item=document.createElement('div');
-    item.className='backup-item';
-    item.innerHTML=
-      '<div style="flex:1;min-width:0;">'+
-        '<div style="font-size:13px;font-weight:500;color:var(--text);">'+s.fileName+statusDot+'</div>'+
-        '<div style="font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:3px;">Début : '+startFmt+'</div>'+
-        '<div style="font-family:var(--mono);font-size:10px;color:var(--text2);">Fin : '+endFmt+'</div>'+
-      '</div>'+
-      '<a href="'+dlUrl+'" target="_blank" class="btn-backup-dl">Excel ↓</a>';
-    list.appendChild(item);
-  });
-}
-
-function _fmtDate(str){
-  if(!str)return '—';
-  try{
-    const d=new Date(str);
-    return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})+
-      ' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-  }catch{return str;}
-}
 
 // ── UTILITAIRES ──
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
