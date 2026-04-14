@@ -207,9 +207,8 @@ const CONFIG = {
   SHEET_ENSEMBLE:   "TABLEAU ENSEMBLE",
   SHEET_INVENTAIRE: "Inventaire V1",
   SHEET_REGLAGES:   "Réglages",
-  SHEET_BACKUPS:    "Backups",
-  APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbyQEto1Y-JKzxB6ZrYjY_wuEsKVEf45Ka4vVFa5I4eYHZ9ufTOBK8uiCwQO9_eP6UIxwQ/exec",
-  VERSION: "v5.15 — 13/04/2026"
+  APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbxSHpIobvcZM41en1QB6mEJWla3xtMS_ExEuui1Vqhv8gIqAkdh3_ANU10L4yN3YK2gAw/exec",
+  VERSION: "v5.16 — 14/04/2026"
 };
 </script>
 
@@ -1210,6 +1209,7 @@ function retryOCR(){document.getElementById('confirm-overlay').classList.remove(
 
 
 // ── SAUVEGARDE AUTOMATIQUE ──
+// ── SAUVEGARDE AUTOMATIQUE ──
 const BACKUP_ACTIVE_KEY = 'inv_backup_active';
 
 function isBackupActive(){return localStorage.getItem(BACKUP_ACTIVE_KEY)==='1';}
@@ -1227,49 +1227,68 @@ function updateBackupToggleUI(){
 async function toggleBackup(){
   const active=isBackupActive();
   const newState=!active;
-  localStorage.setItem(BACKUP_ACTIVE_KEY,newState?'1':'0');
-  updateBackupToggleUI();
-  const payload={action:newState?'activateBackup':'deactivateBackup',user:currentUser,
-    timestamp:new Date(Date.now()+3600000).toISOString().replace('T',' ').slice(0,19)};
+  const btn=document.getElementById('backup-toggle-btn');
+  btn.disabled=true;
   try{
+    const payload={
+      action: newState ? 'startBackupSession' : 'endBackupSession',
+      user: currentUser,
+      timestamp: new Date(Date.now()+3600000).toISOString().replace('T',' ').slice(0,19)
+    };
     await sendPayload(payload);
-    showToast(newState?'Sauvegarde activée — première copie en cours…':'Sauvegarde finale en cours…',newState?'success':'warn');
-    if(newState)setTimeout(loadBackups,4000);
-    else setTimeout(loadBackups,4000);
-  }catch(e){showToast('Erreur lors de la commande','error');}
+    localStorage.setItem(BACKUP_ACTIVE_KEY, newState?'1':'0');
+    updateBackupToggleUI();
+    showToast(
+      newState ? 'Session démarrée — onglet "Debut" en cours de création…' : 'Session terminée — onglet "Fin" en cours de création…',
+      newState ? 'success' : 'warn'
+    );
+    // Recharger la liste après un délai pour laisser le script terminer
+    setTimeout(loadBackups, 5000);
+  }catch(e){
+    showToast('Erreur lors de la commande','error');
+  }finally{
+    btn.disabled=false;
+  }
 }
 
 async function loadBackups(){
   const list=document.getElementById('backup-list');
   if(!list)return;
   try{
-    const json=await fetchSheet(CONFIG.SHEET_BACKUPS);
-    const rows=json.table.rows||[];
-    // Vérifier que la première ligne ressemble bien à des données de backup
-    // (nom commençant par "Backup_" et GID numérique) — si non, l'onglet Backups
-    // n'existe pas encore et gviz a renvoyé une autre feuille par défaut
-    const validRows=rows.filter(row=>{
-      if(!row||!row.c||!row.c[0])return false;
-      const name=(row.c[0]?.v??row.c[0]?.f??'').toString();
-      const gid=row.c[1]?.v;
-      return name.startsWith('Backup_') && typeof gid==='number';
-    });
-    if(!validRows.length){list.innerHTML='<div class="admin-empty">Aucune sauvegarde disponible</div>';return;}
+    const res=await fetch(CONFIG.APPS_SCRIPT_URL+'?action=getBackups');
+    const sessions=await res.json();
+    if(!sessions||!sessions.length){
+      list.innerHTML='<div class="admin-empty">Aucune sauvegarde disponible</div>';return;
+    }
     list.innerHTML='';
-    [...validRows].reverse().forEach(row=>{
-      const name =(row.c[0]?.v??row.c[0]?.f??'').toString();
-      const gid  = row.c[1]?.v??'';
-      const ts   =(row.c[2]?.v??row.c[2]?.f??'').toString();
-      const count= row.c[3]?.v??0;
-      let dateLabel=name.replace('Backup_','').replace('_',' ');
-      try{if(ts){const d=new Date(ts);dateLabel=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})+' — '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}}catch{}
-      const dlUrl='https://docs.google.com/spreadsheets/d/'+CONFIG.SHEET_ID+'/export?format=xlsx&gid='+gid;
+    sessions.forEach(s=>{
+      const dlUrl='https://docs.google.com/spreadsheets/d/'+s.fileId+'/export?format=xlsx';
+      const startFmt=_fmtDate(s.startTime);
+      const endFmt=s.endTime?_fmtDate(s.endTime):'En cours…';
+      const statusDot=s.endTime?'':'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--found);margin-left:6px;vertical-align:middle;box-shadow:0 0 4px rgba(26,138,58,0.5);"></span>';
       const item=document.createElement('div');
       item.className='backup-item';
-      item.innerHTML='<div><div style="font-size:13px;font-weight:500;">'+dateLabel+'</div><div style="font-family:var(--mono);font-size:11px;color:var(--text2);margin-top:2px;">'+count+' ligne'+(count>1?'s':'')+' comptée'+(count>1?'s':'')+'</div></div><a href="'+dlUrl+'" target="_blank" class="btn-backup-dl">Excel ↓</a>';
+      item.innerHTML=
+        '<div style="flex:1;min-width:0;">'+
+          '<div style="font-size:13px;font-weight:500;color:var(--text);">'+s.fileName+statusDot+'</div>'+
+          '<div style="font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:3px;">Début : '+startFmt+'</div>'+
+          '<div style="font-family:var(--mono);font-size:10px;color:var(--text2);">Fin : '+endFmt+'</div>'+
+        '</div>'+
+        '<a href="'+dlUrl+'" target="_blank" class="btn-backup-dl">Excel ↓</a>';
       list.appendChild(item);
     });
-  }catch(e){list.innerHTML='<div class="admin-empty">Aucune sauvegarde disponible</div>';}
+  }catch(e){
+    list.innerHTML='<div class="admin-empty">Impossible de charger les sauvegardes</div>';
+  }
+}
+
+function _fmtDate(str){
+  if(!str)return '—';
+  try{
+    const d=new Date(str);
+    return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})+
+      ' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  }catch{return str;}
 }
 
 // ── UTILITAIRES ──
