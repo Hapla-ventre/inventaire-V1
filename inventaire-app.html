@@ -208,7 +208,7 @@ const CONFIG = {
   SHEET_ENSEMBLE:   "TABLEAU ENSEMBLE",
   SHEET_INVENTAIRE: "Inventaire V1",
   SHEET_REGLAGES:   "Réglages",
-  APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbxSHpIobvcZM41en1QB6mEJWla3xtMS_ExEuui1Vqhv8gIqAkdh3_ANU10L4yN3YK2gAw/exec",
+  APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbyyi8fzIaT2u__MkztUixBjvbytycOujjvlrbmAg8gq_DLYEKgfoBKWE5jf_B0Sc6vYFw/exec",
   VERSION: "v5.17 — 14/04/2026"
 };
 </script>
@@ -427,6 +427,23 @@ const CONFIG = {
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
     </svg>
   </button>
+</div>
+
+
+<!-- MODAL SUPPRESSION BACKUP -->
+<div class="confirm-overlay" id="delete-backup-overlay">
+  <div class="confirm-sheet">
+    <div class="confirm-handle"></div>
+    <div class="confirm-title">Supprimer cette sauvegarde ?</div>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:8px;line-height:1.6;">
+      La sauvegarde <strong id="delete-backup-name"></strong> sera retirée de la liste.<br>
+      Cette action est irréversible.
+    </p>
+    <div class="confirm-btns" style="margin-top:16px;">
+      <button class="btn-retry" onclick="cancelDeleteBackup()">Annuler</button>
+      <button class="btn-confirm" style="background:var(--danger);" onclick="doDeleteBackup()">Supprimer</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -727,7 +744,6 @@ function goAdmin(){
   }
   loadEnsembles();
   loadSuspects();
-  updateBackupToggleUI();
   loadBackups();
   if(window._adminRefresh)clearInterval(window._adminRefresh);
   window._adminRefresh=setInterval(()=>{
@@ -873,46 +889,33 @@ async function loadSuspects(){
 }
 
 // ── SAUVEGARDE AUTOMATIQUE ──
-const BACKUP_ACTIVE_KEY='inv_backup_active';
-const BACKUP_SESSIONS_KEY='inv_backup_sessions';
+// ── SAUVEGARDE — état partagé serveur ──
+// L'état actif est dérivé des sessions serveur (session sans endTime = active)
+// Tous les admins voient le même état
 
-function isBackupActive(){return localStorage.getItem(BACKUP_ACTIVE_KEY)==='1';}
-function getLocalSessions(){try{return JSON.parse(localStorage.getItem(BACKUP_SESSIONS_KEY)||'[]');}catch{return[];}}
-function saveLocalSessions(s){localStorage.setItem(BACKUP_SESSIONS_KEY,JSON.stringify(s));}
-
-function updateBackupToggleUI(){
+function updateBackupToggleUI(sessions){
+  if(!sessions)return;
+  const active=sessions.some(s=>!s.endTime);
   const btn=document.getElementById('backup-toggle-btn');
   const dot=document.getElementById('backup-status-dot');
   const lbl=document.getElementById('backup-status-label');
-  const active=isBackupActive();
   if(btn){btn.textContent=active?'Désactiver':'Activer';btn.classList.toggle('active',active);}
   if(dot){dot.className='backup-status-dot '+(active?'on':'off');}
   if(lbl){lbl.textContent=active?'Actif — sauvegarde toutes les heures':'Inactif — cliquez pour démarrer';}
 }
 
 async function toggleBackup(){
-  const active=isBackupActive();
-  const newState=!active;
   const btn=document.getElementById('backup-toggle-btn');
   btn.disabled=true;
-  showToast(newState?'Démarrage de la session…':'Clôture de la session…','');
   try{
+    const sessions=await sendPayload({action:'getBackups'});
+    const currentlyActive=Array.isArray(sessions)?sessions.some(s=>!s.endTime):false;
+    const newState=!currentlyActive;
+    showToast(newState?'Démarrage de la session…':'Clôture de la session…','');
     const ts=localTimestamp();
-    const result=await sendPayload({action:newState?'startBackupSession':'endBackupSession',user:currentUser,timestamp:ts});
-    if(newState){
-      const sessions=getLocalSessions();
-      sessions.unshift({fileId:result.fileId,fileName:result.fileName,startTime:ts,endTime:null});
-      saveLocalSessions(sessions);
-      showToast('Session démarrée — onglet "Debut" créé ✓','success');
-    }else{
-      const sessions=getLocalSessions();
-      const idx=sessions.findIndex(s=>!s.endTime);
-      if(idx>=0){sessions[idx].endTime=ts;saveLocalSessions(sessions);}
-      showToast('Session clôturée — onglet "Fin" créé ✓','success');
-    }
-    localStorage.setItem(BACKUP_ACTIVE_KEY,newState?'1':'0');
-    updateBackupToggleUI();
-    loadBackups();
+    await sendPayload({action:newState?'startBackupSession':'endBackupSession',user:currentUser,timestamp:ts});
+    showToast(newState?'Session démarrée — onglet "Debut" créé ✓':'Session clôturée — onglet "Fin" créé ✓',newState?'success':'warn');
+    await loadBackups();
   }catch(e){
     showToast('Erreur : '+e.message,'error');
   }finally{
@@ -920,29 +923,72 @@ async function toggleBackup(){
   }
 }
 
-function loadBackups(){
+async function loadBackups(){
   const list=document.getElementById('backup-list');
   if(!list)return;
-  const sessions=getLocalSessions();
-  if(!sessions.length){list.innerHTML='<div class="admin-empty">Aucune sauvegarde disponible</div>';return;}
-  list.innerHTML='';
-  sessions.forEach(s=>{
-    const dlUrl='https://docs.google.com/spreadsheets/d/'+s.fileId+'/export?format=xlsx';
-    const startFmt=_fmtDate(s.startTime);
-    const endFmt=s.endTime?_fmtDate(s.endTime):'En cours…';
-    const dot=s.endTime?'':'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--found);margin-left:6px;vertical-align:middle;box-shadow:0 0 4px rgba(26,138,58,0.5);"></span>';
-    const item=document.createElement('div');
-    item.className='backup-item';
-    item.innerHTML='<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:500;color:var(--text);">'+s.fileName+dot+'</div><div style="font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:3px;">Début : '+startFmt+'</div><div style="font-family:var(--mono);font-size:10px;color:var(--text2);">Fin : '+endFmt+'</div></div><a href="'+dlUrl+'" target="_blank" class="btn-backup-dl">Excel ↓</a>';
-    list.appendChild(item);
-  });
+  list.innerHTML='<div class="admin-empty" style="padding:16px 0;">Chargement…</div>';
+  try{
+    const sessions=await sendPayload({action:'getBackups'});
+    updateBackupToggleUI(Array.isArray(sessions)?sessions:[]);
+    if(!Array.isArray(sessions)||!sessions.length){
+      list.innerHTML='<div class="admin-empty">Aucune sauvegarde disponible</div>';return;
+    }
+    list.innerHTML='';
+    sessions.forEach(s=>{
+      const dlUrl='https://docs.google.com/spreadsheets/d/'+s.fileId+'/export?format=xlsx';
+      const startFmt=_fmtDate(s.startTime);
+      const endFmt=s.endTime?_fmtDate(s.endTime):'En cours…';
+      const activeDot=s.endTime?'':'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--found);margin-left:6px;vertical-align:middle;box-shadow:0 0 4px rgba(26,138,58,0.5);"></span>';
+      const item=document.createElement('div');
+      item.className='backup-item';
+      item.style.flexWrap='wrap';
+      item.style.gap='8px';
+      item.innerHTML=
+        '<div style="flex:1;min-width:0;">'+
+          '<div style="font-size:13px;font-weight:500;color:var(--text);">'+s.fileName+activeDot+'</div>'+
+          '<div style="font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:3px;">Début : '+startFmt+'</div>'+
+          '<div style="font-family:var(--mono);font-size:10px;color:var(--text2);">Fin : '+endFmt+'</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:6px;align-items:center;">'+
+          '<a href="'+dlUrl+'" target="_blank" class="btn-backup-dl">Excel ↓</a>'+
+          '<button onclick="confirmDeleteBackup(''+s.fileId+'',''+s.fileName+'')" style="background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger);border-radius:var(--r-sm);font-size:11px;font-weight:600;padding:6px 10px;cursor:pointer;white-space:nowrap;">Supprimer</button>'+
+        '</div>';
+      list.appendChild(item);
+    });
+  }catch(e){
+    list.innerHTML='<div class="admin-empty">Erreur de chargement</div>';
+    updateBackupToggleUI([]);
+  }
+}
+
+// ── SUPPRESSION BACKUP ──
+let _deleteFileId='',_deleteFileName='';
+function confirmDeleteBackup(fileId,fileName){
+  _deleteFileId=fileId;_deleteFileName=fileName;
+  document.getElementById('delete-backup-name').textContent=fileName;
+  document.getElementById('delete-backup-overlay').classList.add('active');
+}
+function cancelDeleteBackup(){
+  document.getElementById('delete-backup-overlay').classList.remove('active');
+  _deleteFileId='';_deleteFileName='';
+}
+async function doDeleteBackup(){
+  document.getElementById('delete-backup-overlay').classList.remove('active');
+  if(!_deleteFileId)return;
+  try{
+    await sendPayload({action:'deleteBackup',fileId:_deleteFileId,user:currentUser});
+    showToast('Sauvegarde supprimée de la liste','success');
+    await loadBackups();
+  }catch(e){
+    showToast('Erreur suppression : '+e.message,'error');
+  }
+  _deleteFileId='';_deleteFileName='';
 }
 
 function _fmtDate(str){
   if(!str)return '—';
   try{const d=new Date(str);return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}catch{return str;}
 }
-
 // ── SUGGESTIONS ──
 function showSuggestions(val){
   const box=document.getElementById('suggestions');
