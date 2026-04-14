@@ -126,7 +126,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 #cam-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 #cam-canvas{display:none;}
 .cam-ui{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-.cam-viewfinder{width:min(280px,80vw);height:72px;position:relative;}
+.cam-viewfinder{width:min(300px,85vw);height:110px;position:relative;}
 .cam-viewfinder-inner{position:absolute;inset:0;border:2px solid #1a6fe8;border-radius:10px;box-shadow:0 0 0 4000px rgba(0,0,0,0.6);}
 .cam-viewfinder-inner::before,.cam-viewfinder-inner::after{content:'';position:absolute;width:18px;height:18px;border-color:#fff;border-style:solid;}
 .cam-viewfinder-inner::before{top:-2px;left:-2px;border-width:3px 0 0 3px;border-radius:4px 0 0 0;}
@@ -208,7 +208,7 @@ const CONFIG = {
   SHEET_INVENTAIRE: "Inventaire V1",
   SHEET_REGLAGES:   "Réglages",
   APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbxSHpIobvcZM41en1QB6mEJWla3xtMS_ExEuui1Vqhv8gIqAkdh3_ANU10L4yN3YK2gAw/exec",
-  VERSION: "v5.16 — 14/04/2026"
+  VERSION: "v5.17 — 14/04/2026"
 };
 </script>
 
@@ -225,6 +225,10 @@ const CONFIG = {
           <option value="">— Choisir —</option>
         </select>
       </div>
+    </div>
+    <div id="password-group" style="display:none;">
+      <div class="field-label">Mot de passe</div>
+      <input type="text" id="password-input" class="field-input" placeholder="Entrez le mot de passe" autocomplete="off" autocorrect="off" spellcheck="false">
     </div>
     <button class="btn-primary" id="btn-start" disabled>Commencer l'inventaire</button>
   </div>
@@ -272,7 +276,7 @@ const CONFIG = {
     </div>
     <div>
       <div class="scan-label" style="margin-bottom:6px;">Zone / Secteur</div>
-      <input type="text" id="zone-scan-input" class="ref-input" style="font-size:16px;letter-spacing:0.02em;text-transform:none;font-family:var(--sans);" placeholder="ex: Rayon A, Réserve…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <input type="text" id="zone-scan-input" class="ref-input" style="font-size:16px;letter-spacing:0.02em;text-transform:none;font-family:var(--sans);" placeholder="ex: RAYON A, RÉSERVE…" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
     </div>
     <div class="divider"></div>
     <div class="qty-section">
@@ -351,7 +355,7 @@ const CONFIG = {
     <textarea id="correct-comment" class="correct-comment" placeholder="Ex: Erreur d'étiquetage, recompté le…"></textarea>
     <div class="correct-btns">
       <button class="btn-retry" onclick="closeCorrectModal()">Annuler</button>
-      <button class="btn-confirm" onclick="submitCorrection()">Enregistrer</button>
+      <button class="btn-confirm" id="btn-correct-submit" onclick="submitCorrection()" style="display:flex;align-items:center;justify-content:center;gap:8px;"><div class="spinner"></div><span class="btn-text">Enregistrer</span></button>
     </div>
   </div>
 </div>
@@ -366,6 +370,7 @@ const CONFIG = {
       <div class="confirm-ref-label">Référence lue</div>
       <input type="text" id="confirm-ref-edit" class="confirm-ref-edit" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
       <div id="confirm-libelle" class="confirm-libelle">—</div>
+      <div id="ocr-suggestions" style="display:none;"></div>
     </div>
     <div class="confirm-btns">
       <button class="btn-retry" id="btn-retry">Réessayer</button>
@@ -432,6 +437,7 @@ const CONFIG = {
 let currentUser='', catalogue={}, currentRef=null;
 let scanCount=0, camStream=null, ocrWorker=null, ocrReady=false, isScanning=false, lineCount=0;
 const userPermissions={};
+const userPasswords={};
 let adminThreshold=20;
 
 // ── VERSION ──
@@ -518,7 +524,9 @@ async function loadUsers(){
       const name=(row.c[0].v??row.c[0].f??'').toString().trim();
       if(!name)return;
       const perm=(row.c[1]?.v??row.c[1]?.f??'').toString().trim().toLowerCase();
+      const pwd=(row.c[2]?.v??row.c[2]?.f??'').toString().trim();
       userPermissions[name]=perm;
+      userPasswords[name]=pwd;
       const o=document.createElement('option');
       o.value=name;o.textContent=name;
       sel.appendChild(o);
@@ -592,7 +600,12 @@ async function loadUserCount(){
 // ── INIT ──
 function init(){
   const sel=document.getElementById('user-select');
-  sel.addEventListener('change',()=>{document.getElementById('btn-start').disabled=!sel.value;});
+  sel.addEventListener('change',()=>{
+    const name=sel.value;
+    document.getElementById('btn-start').disabled=!name;
+    document.getElementById('password-input').value='';
+    document.getElementById('password-group').style.display=(name&&userPasswords[name])?'block':'none';
+  });
   document.getElementById('btn-start').addEventListener('click',startSession);
   loadUsers();
 
@@ -603,6 +616,7 @@ function init(){
     showSuggestions(val);
   });
   document.getElementById('ref-input').addEventListener('blur',()=>{setTimeout(hideSuggestions,200);});
+  document.getElementById('zone-scan-input').addEventListener('blur',e=>{e.target.value=e.target.value.toUpperCase();});
   document.getElementById('btn-validate').addEventListener('click',validate);
   document.getElementById('btn-add-line').addEventListener('click',addCountLine);
   document.querySelectorAll('.unite-btn').forEach(btn=>{
@@ -626,13 +640,23 @@ function init(){
     const lbl=document.getElementById('confirm-libelle');
     lbl.textContent=a?.libelle||(r?'Référence inconnue':'—');
     lbl.style.color=a?.libelle?'var(--text2)':'var(--danger)';
+    showOcrSuggestions(r);
   });
   addCountLine();
 }
 
 // ── SESSION ──
 async function startSession(){
-  currentUser=document.getElementById('user-select').value;
+  const selectedUser=document.getElementById('user-select').value;
+  const expectedPwd=userPasswords[selectedUser]||'';
+  if(expectedPwd){
+    const enteredPwd=document.getElementById('password-input').value.trim();
+    if(enteredPwd!==expectedPwd){
+      showToast('Mot de passe incorrect','error');
+      document.getElementById('password-input').value='';
+      return;
+    }
+  }
   document.getElementById('display-user').textContent=currentUser;
   sessionStorage.setItem('inv_user',currentUser);
   sessionStorage.setItem('inv_perm',userPermissions[currentUser]||'');
@@ -676,14 +700,18 @@ async function submitCorrection(){
     correction:val,
     commentaire:comment,
     user:currentUser,
-    timestamp:new Date(Date.now()+3600000).toISOString().replace('T',' ').slice(0,19)
+    timestamp:localTimestamp()
   };
+  btn.disabled=true;btn.classList.add('loading');
+  showToast('Correction en cours…','');
   try{
     await sendPayload(payload);
+    btn.disabled=false;btn.classList.remove('loading');
     showToast('Correction enregistrée','success');
     closeCorrectModal();
     setTimeout(loadSuspects, 1000);
   }catch(e){
+    btn.disabled=false;btn.classList.remove('loading');
     showToast('Erreur lors de la correction','error');
   }
 }
@@ -890,6 +918,26 @@ function showSuggestions(val){
 function hideSuggestions(){document.getElementById('suggestions').style.display='none';}
 function pickSuggestion(ref){document.getElementById('ref-input').value=ref;hideSuggestions();lookupRef(ref);}
 
+// ── SUGGESTIONS OCR MODAL ──
+function showOcrSuggestions(val){
+  const box=document.getElementById('ocr-suggestions');
+  if(!val||val.length<2){box.style.display='none';return;}
+  const matches=Object.keys(catalogue).filter(k=>k.includes(val)||catalogue[k].libelle.toUpperCase().includes(val)).slice(0,3);
+  if(!matches.length){box.style.display='none';return;}
+  box.className='suggestions';box.style.marginTop='8px';
+  box.innerHTML=matches.map(k=>`<div class="suggestion-item" onmousedown="pickOcrSuggestion('${k}')"><span class="suggestion-ref">${k}</span><span class="suggestion-name">${catalogue[k].libelle}</span></div>`).join('');
+  box.style.display='block';
+}
+function hideOcrSuggestions(){document.getElementById('ocr-suggestions').style.display='none';}
+function pickOcrSuggestion(ref){
+  document.getElementById('confirm-ref-edit').value=ref;
+  const art=catalogue[ref];
+  const lbl=document.getElementById('confirm-libelle');
+  lbl.textContent=art?.libelle||'Référence inconnue';
+  lbl.style.color=art?.libelle?'var(--text2)':'var(--danger)';
+  hideOcrSuggestions();
+}
+
 // ── LOOKUP ──
 function lookupRef(ref){
   currentRef=null;
@@ -1036,7 +1084,7 @@ async function validate(){
     detailComptage:lignes.join('\n'),zone,
     stockBefore:catalogue[ref]?.stock??null,
     user:currentUser,
-    timestamp:new Date(Date.now()+3600000).toISOString().replace('T',' ').slice(0,19)
+    timestamp:localTimestamp()
   };
 
   const localId=Date.now()+Math.random().toString(36).slice(2);
@@ -1139,6 +1187,79 @@ async function openCamera(){
   }catch(e4){showToast('Erreur OCR init: '+e4.message,'error');}
 }
 
+// ── OCR HELPERS ──
+function binarizeCanvas(canvas){
+  const ctx=canvas.getContext('2d');
+  const img=ctx.getImageData(0,0,canvas.width,canvas.height);
+  const d=img.data, gray=new Uint8Array(d.length/4), hist=new Array(256).fill(0);
+  for(let i=0;i<d.length;i+=4){const g=Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);gray[i/4]=g;hist[g]++;}
+  const total=gray.length;let sumAll=0;
+  for(let i=0;i<256;i++)sumAll+=i*hist[i];
+  let sumBg=0,wBg=0,maxVar=0,thr=128;
+  for(let t=0;t<256;t++){wBg+=hist[t];if(!wBg)continue;const wFg=total-wBg;if(!wFg)break;sumBg+=t*hist[t];const diff=sumBg/wBg-(sumAll-sumBg)/wFg;const v=wBg*wFg*diff*diff;if(v>maxVar){maxVar=v;thr=t;}}
+  for(let i=0;i<gray.length;i++){const v=gray[i]>thr?255:0;d[i*4]=d[i*4+1]=d[i*4+2]=v;}
+  ctx.putImageData(img,0,0);
+}
+
+function adaptiveBinarize(canvas){
+  const ctx=canvas.getContext('2d');
+  const img=ctx.getImageData(0,0,canvas.width,canvas.height);
+  const d=img.data,w=canvas.width,h=canvas.height;
+  const gray=new Uint8Array(w*h);
+  for(let i=0;i<d.length;i+=4)gray[i/4]=Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
+  const integ=new Float64Array((w+1)*(h+1));
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)integ[(y+1)*(w+1)+(x+1)]=gray[y*w+x]+integ[y*(w+1)+(x+1)]+integ[(y+1)*(w+1)+x]-integ[y*(w+1)+x];
+  const r=Math.max(8,Math.round(Math.min(w,h)*0.06));
+  const C=12;
+  for(let y=0;y<h;y++){
+    const y1=Math.max(0,y-r),y2=Math.min(h-1,y+r);
+    for(let x=0;x<w;x++){
+      const x1=Math.max(0,x-r),x2=Math.min(w-1,x+r);
+      const area=(y2-y1+1)*(x2-x1+1);
+      const sum=integ[(y2+1)*(w+1)+(x2+1)]-integ[y1*(w+1)+(x2+1)]-integ[(y2+1)*(w+1)+x1]+integ[y1*(w+1)+x1];
+      const v=gray[y*w+x]>(sum/area-C)?255:0;
+      d[(y*w+x)*4]=d[(y*w+x)*4+1]=d[(y*w+x)*4+2]=v;
+    }
+  }
+  ctx.putImageData(img,0,0);
+}
+
+function levenshtein(a,b){
+  const m=a.length,n=b.length;if(!m)return n;if(!n)return m;
+  const dp=Array.from({length:m+1},()=>new Array(n+1).fill(0));
+  for(let i=0;i<=m;i++)dp[i][0]=i;
+  for(let j=0;j<=n;j++)dp[0][j]=j;
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+  return dp[m][n];
+}
+
+function fuzzyMatchRef(raw){
+  if(!raw||raw.length<3)return raw;
+  const up=raw.toUpperCase();
+  if(catalogue[up])return up;
+  const subs=[up,up.replace(/O/g,'0'),up.replace(/0/g,'O'),up.replace(/I/g,'1').replace(/O/g,'0'),up.replace(/S/g,'5'),up.replace(/B/g,'8'),up.replace(/G/g,'6'),up.replace(/Z/g,'2'),up.replace(/O/g,'0').replace(/I/g,'1').replace(/S/g,'5')];
+  for(const s of subs)if(catalogue[s])return s;
+  const maxDist=Math.max(1,Math.floor(up.length*0.25));
+  let best=null,bestD=Infinity;
+  for(const ref of Object.keys(catalogue)){
+    if(Math.abs(ref.length-up.length)>maxDist)continue;
+    const d=levenshtein(up,ref);
+    if(d<bestD){bestD=d;best=ref;}
+  }
+  return bestD<=maxDist?best:up;
+}
+
+async function ocrWithPreprocess(canvas,preprocessFn){
+  const tmp=document.createElement('canvas');
+  tmp.width=canvas.width;tmp.height=canvas.height;
+  tmp.getContext('2d').drawImage(canvas,0,0);
+  preprocessFn(tmp);
+  const{data}=await ocrWorker.recognize(tmp);
+  const cleaned=data.text.replace(/\s/g,'').toUpperCase();
+  const match=cleaned.match(/[A-Z0-9]{3,}/);
+  return{text:match?match[0]:'',confidence:data.confidence||0,data};
+}
+
 async function triggerOCR(){
   if(!ocrReady||isScanning)return;
   isScanning=true;
@@ -1147,34 +1268,52 @@ async function triggerOCR(){
   const video=document.getElementById('cam-video');const canvas=document.getElementById('cam-canvas');
   if(video.readyState<2){isScanning=false;btn.classList.remove('scanning');return;}
   const vw=video.videoWidth,vh=video.videoHeight;
-  const cropW=Math.round(vw*0.8),cropH=Math.round(vh*0.35);
-  const cropX=Math.round((vw-cropW)/2),cropY=Math.round((vh-cropH)/2)-Math.round(vh*0.08);
+  const dw=video.clientWidth,dh=video.clientHeight;
+  const videoRatio=vw/vh, displayRatio=dw/dh;
+  let scale,offX=0,offY=0;
+  if(videoRatio>displayRatio){scale=dh/vh;offX=(vw*scale-dw)/2;}
+  else{scale=dw/vw;offY=(vh*scale-dh)/2;}
+  const vf=document.querySelector('.cam-viewfinder').getBoundingClientRect();
+  const pad=20;
+  const cropX=Math.max(0,Math.round((vf.left-pad+offX)/scale));
+  const cropY=Math.max(0,Math.round((vf.top-pad+offY)/scale));
+  const cropW=Math.min(vw-cropX,Math.round((vf.width+pad*2)/scale));
+  const cropH=Math.min(vh-cropY,Math.round((vf.height+pad*2)/scale));
   canvas.width=cropW;canvas.height=cropH;
   const ctx=canvas.getContext('2d');
   ctx.drawImage(video,cropX,cropY,cropW,cropH,0,0,cropW,cropH);
   const preview=document.createElement('canvas');preview.width=cropW;preview.height=cropH;
   preview.getContext('2d').drawImage(canvas,0,0);
-  ctx.filter='contrast(2.2) brightness(1.15) grayscale(1)';ctx.drawImage(canvas,0,0);
   try{
-    const{data}=await ocrWorker.recognize(canvas);
-    const cleaned=data.text.replace(/\s/g,'').toUpperCase();
-    const match=cleaned.match(/[A-Z0-9]{3,}/);
+    const r1=await ocrWithPreprocess(canvas,adaptiveBinarize);
+    const r2=await ocrWithPreprocess(canvas,binarizeCanvas);
+    const r3=await ocrWithPreprocess(canvas,c=>{const x=c.getContext('2d');x.filter='contrast(2.5) brightness(1.2) grayscale(1)';x.drawImage(c,0,0);});
+    const results=[r1,r2,r3].filter(r=>r.text.length>=3);
+    results.sort((a,b)=>{
+      const ma=fuzzyMatchRef(a.text),mb=fuzzyMatchRef(b.text);
+      const inCatA=catalogue[ma]?1:0, inCatB=catalogue[mb]?1:0;
+      if(inCatA!==inCatB)return inCatB-inCatA;
+      return b.confidence-a.confidence;
+    });
+    const best=results[0];
     btn.classList.remove('scanning');
-    if(match){
+    if(best){
+      const matched=fuzzyMatchRef(best.text);
       let croppedUrl;
       try{
-        const word=data.words&&data.words.find(w=>w.text.replace(/\s/g,'').toUpperCase().includes(match[0].slice(0,4)));
+        const word=best.data.words&&best.data.words.find(w=>w.text.replace(/\s/g,'').toUpperCase().includes(best.text.slice(0,4)));
         if(word&&word.bbox){
-          const b=word.bbox,pad=40;
-          const x=Math.max(0,b.x0-pad),y=Math.max(0,b.y0-pad);
-          const w=Math.min(canvas.width-x,(b.x1-b.x0)+pad*2),h=Math.min(canvas.height-y,(b.y1-b.y0)+pad*2);
+          const b=word.bbox,p2=40;
+          const x=Math.max(0,b.x0-p2),y=Math.max(0,b.y0-p2);
+          const w=Math.min(canvas.width-x,(b.x1-b.x0)+p2*2),h=Math.min(canvas.height-y,(b.y1-b.y0)+p2*2);
           const cc=document.createElement('canvas');cc.width=w;cc.height=h;
           cc.getContext('2d').drawImage(preview,x,y,w,h,0,0,w,h);
           croppedUrl=cc.toDataURL('image/jpeg',0.9);
         }
       }catch{}
-      showConfirmModal(match[0],croppedUrl||preview.toDataURL('image/jpeg',0.8));
+      showConfirmModal(matched||best.text,croppedUrl||preview.toDataURL('image/jpeg',0.8));
     }else{
+      showToast('Aucun texte détecté — réessayez','warn');
       document.getElementById('cam-status').textContent='Prêt — appuyez pour scanner';
       document.getElementById('cam-status').className='cam-status ready';
     }
@@ -1196,16 +1335,18 @@ function showConfirmModal(ref,photoUrl){
   const art=catalogue[ref];
   document.getElementById('confirm-libelle').textContent=art?.libelle||'Référence inconnue';
   document.getElementById('confirm-libelle').style.color=art?.libelle?'var(--text2)':'var(--danger)';
+  showOcrSuggestions(ref);
   document.getElementById('confirm-overlay').classList.add('active');
   setTimeout(()=>document.getElementById('confirm-ref-edit').select(),350);
 }
 
 function confirmOCR(){
   const ref=document.getElementById('confirm-ref-edit').value.trim().toUpperCase();
+  hideOcrSuggestions();
   document.getElementById('confirm-overlay').classList.remove('active');
   if(ref){document.getElementById('ref-input').value=ref;lookupRef(ref);}
 }
-function retryOCR(){document.getElementById('confirm-overlay').classList.remove('active');openCamera();}
+function retryOCR(){hideOcrSuggestions();document.getElementById('confirm-overlay').classList.remove('active');openCamera();}
 
 
 // ── SAUVEGARDE AUTOMATIQUE ──
