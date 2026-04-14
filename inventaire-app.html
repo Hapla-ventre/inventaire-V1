@@ -208,7 +208,7 @@ const CONFIG = {
   SHEET_INVENTAIRE: "Inventaire V1",
   SHEET_REGLAGES:   "Réglages",
   SHEET_BACKUPS:    "Backups",
-  APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbxwPb6Sqa0UbH_BWyb9sM3nrWOet7cxpcxWANlvcfSh7WswRWoYj_cph8VRNSvXxWU1KA/exec",
+  APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbyQEto1Y-JKzxB6ZrYjY_wuEsKVEf45Ka4vVFa5I4eYHZ9ufTOBK8uiCwQO9_eP6UIxwQ/exec",
   VERSION: "v5.15 — 13/04/2026"
 };
 </script>
@@ -1233,8 +1233,9 @@ async function toggleBackup(){
     timestamp:new Date(Date.now()+3600000).toISOString().replace('T',' ').slice(0,19)};
   try{
     await sendPayload(payload);
-    showToast(newState?'Sauvegarde activée — première copie en cours…':'Sauvegarde désactivée',newState?'success':'warn');
+    showToast(newState?'Sauvegarde activée — première copie en cours…':'Sauvegarde finale en cours…',newState?'success':'warn');
     if(newState)setTimeout(loadBackups,4000);
+    else setTimeout(loadBackups,4000);
   }catch(e){showToast('Erreur lors de la commande','error');}
 }
 
@@ -1244,16 +1245,22 @@ async function loadBackups(){
   try{
     const json=await fetchSheet(CONFIG.SHEET_BACKUPS);
     const rows=json.table.rows||[];
-    if(!rows.length){list.innerHTML='<div class="admin-empty">Aucune sauvegarde disponible</div>';return;}
+    // Vérifier que la première ligne ressemble bien à des données de backup
+    // (nom commençant par "Backup_" et GID numérique) — si non, l'onglet Backups
+    // n'existe pas encore et gviz a renvoyé une autre feuille par défaut
+    const validRows=rows.filter(row=>{
+      if(!row||!row.c||!row.c[0])return false;
+      const name=(row.c[0]?.v??row.c[0]?.f??'').toString();
+      const gid=row.c[1]?.v;
+      return name.startsWith('Backup_') && typeof gid==='number';
+    });
+    if(!validRows.length){list.innerHTML='<div class="admin-empty">Aucune sauvegarde disponible</div>';return;}
     list.innerHTML='';
-    [...rows].reverse().forEach(row=>{
-      if(!row||!row.c||!row.c[0])return;
+    [...validRows].reverse().forEach(row=>{
       const name =(row.c[0]?.v??row.c[0]?.f??'').toString();
       const gid  = row.c[1]?.v??'';
       const ts   =(row.c[2]?.v??row.c[2]?.f??'').toString();
       const count= row.c[3]?.v??0;
-      if(!name)return;
-      // Formater la date lisiblement
       let dateLabel=name.replace('Backup_','').replace('_',' ');
       try{if(ts){const d=new Date(ts);dateLabel=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})+' — '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}}catch{}
       const dlUrl='https://docs.google.com/spreadsheets/d/'+CONFIG.SHEET_ID+'/export?format=xlsx&gid='+gid;
