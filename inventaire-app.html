@@ -1224,62 +1224,92 @@ function updateBackupToggleUI(){
   if(lbl){lbl.textContent=active?'Actif — sauvegarde toutes les heures':'Inactif — cliquez pour démarrer';}
 }
 
+// Appel Apps Script avec réponse lisible (CORS-safe via redirect suivi)
+async function sendPayloadReadable(payload){
+  const form=new FormData();
+  form.append('data',JSON.stringify(payload));
+  const res=await fetch(CONFIG.APPS_SCRIPT_URL,{method:'POST',body:form,redirect:'follow'});
+  const text=await res.text();
+  try{return JSON.parse(text);}catch{return {ok:false,error:text};}
+}
+
+const BACKUP_SESSIONS_KEY='inv_backup_sessions';
+
+function getLocalSessions(){
+  try{return JSON.parse(localStorage.getItem(BACKUP_SESSIONS_KEY)||'[]');}catch{return[];}
+}
+function saveLocalSessions(sessions){
+  localStorage.setItem(BACKUP_SESSIONS_KEY,JSON.stringify(sessions));
+}
+
 async function toggleBackup(){
   const active=isBackupActive();
   const newState=!active;
   const btn=document.getElementById('backup-toggle-btn');
   btn.disabled=true;
+  showToast(newState?'Démarrage de la session…':'Clôture de la session…','');
   try{
-    const payload={
-      action: newState ? 'startBackupSession' : 'endBackupSession',
-      user: currentUser,
-      timestamp: new Date(Date.now()+3600000).toISOString().replace('T',' ').slice(0,19)
-    };
-    await sendPayload(payload);
-    localStorage.setItem(BACKUP_ACTIVE_KEY, newState?'1':'0');
+    const ts=new Date(Date.now()+3600000).toISOString().replace('T',' ').slice(0,19);
+    const result=await sendPayloadReadable({
+      action: newState?'startBackupSession':'endBackupSession',
+      user: currentUser, timestamp: ts
+    });
+    if(!result.ok){
+      showToast('Erreur : '+(result.error||'inconnue'),'error');
+      return;
+    }
+    if(newState){
+      // Stocker la nouvelle session localement avec le fileId retourné
+      const sessions=getLocalSessions();
+      sessions.unshift({
+        fileId: result.fileId,
+        fileName: result.fileName,
+        startTime: ts,
+        endTime: null
+      });
+      saveLocalSessions(sessions);
+      showToast('Session démarrée — onglet "Debut" créé ✓','success');
+    }else{
+      // Marquer la session en cours comme terminée
+      const sessions=getLocalSessions();
+      const idx=sessions.findIndex(s=>!s.endTime);
+      if(idx>=0){sessions[idx].endTime=ts;saveLocalSessions(sessions);}
+      showToast('Session clôturée — onglet "Fin" créé ✓','success');
+    }
+    localStorage.setItem(BACKUP_ACTIVE_KEY,newState?'1':'0');
     updateBackupToggleUI();
-    showToast(
-      newState ? 'Session démarrée — onglet "Debut" en cours de création…' : 'Session terminée — onglet "Fin" en cours de création…',
-      newState ? 'success' : 'warn'
-    );
-    // Recharger la liste après un délai pour laisser le script terminer
-    setTimeout(loadBackups, 5000);
+    loadBackups();
   }catch(e){
-    showToast('Erreur lors de la commande','error');
+    showToast('Erreur réseau : '+e.message,'error');
   }finally{
     btn.disabled=false;
   }
 }
 
-async function loadBackups(){
+function loadBackups(){
   const list=document.getElementById('backup-list');
   if(!list)return;
-  try{
-    const res=await fetch(CONFIG.APPS_SCRIPT_URL+'?action=getBackups');
-    const sessions=await res.json();
-    if(!sessions||!sessions.length){
-      list.innerHTML='<div class="admin-empty">Aucune sauvegarde disponible</div>';return;
-    }
-    list.innerHTML='';
-    sessions.forEach(s=>{
-      const dlUrl='https://docs.google.com/spreadsheets/d/'+s.fileId+'/export?format=xlsx';
-      const startFmt=_fmtDate(s.startTime);
-      const endFmt=s.endTime?_fmtDate(s.endTime):'En cours…';
-      const statusDot=s.endTime?'':'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--found);margin-left:6px;vertical-align:middle;box-shadow:0 0 4px rgba(26,138,58,0.5);"></span>';
-      const item=document.createElement('div');
-      item.className='backup-item';
-      item.innerHTML=
-        '<div style="flex:1;min-width:0;">'+
-          '<div style="font-size:13px;font-weight:500;color:var(--text);">'+s.fileName+statusDot+'</div>'+
-          '<div style="font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:3px;">Début : '+startFmt+'</div>'+
-          '<div style="font-family:var(--mono);font-size:10px;color:var(--text2);">Fin : '+endFmt+'</div>'+
-        '</div>'+
-        '<a href="'+dlUrl+'" target="_blank" class="btn-backup-dl">Excel ↓</a>';
-      list.appendChild(item);
-    });
-  }catch(e){
-    list.innerHTML='<div class="admin-empty">Impossible de charger les sauvegardes</div>';
+  const sessions=getLocalSessions();
+  if(!sessions.length){
+    list.innerHTML='<div class="admin-empty">Aucune sauvegarde disponible</div>';return;
   }
+  list.innerHTML='';
+  sessions.forEach(s=>{
+    const dlUrl='https://docs.google.com/spreadsheets/d/'+s.fileId+'/export?format=xlsx';
+    const startFmt=_fmtDate(s.startTime);
+    const endFmt=s.endTime?_fmtDate(s.endTime):'En cours…';
+    const statusDot=s.endTime?'':'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--found);margin-left:6px;vertical-align:middle;box-shadow:0 0 4px rgba(26,138,58,0.5);"></span>';
+    const item=document.createElement('div');
+    item.className='backup-item';
+    item.innerHTML=
+      '<div style="flex:1;min-width:0;">'+
+        '<div style="font-size:13px;font-weight:500;color:var(--text);">'+s.fileName+statusDot+'</div>'+
+        '<div style="font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:3px;">Début : '+startFmt+'</div>'+
+        '<div style="font-family:var(--mono);font-size:10px;color:var(--text2);">Fin : '+endFmt+'</div>'+
+      '</div>'+
+      '<a href="'+dlUrl+'" target="_blank" class="btn-backup-dl">Excel ↓</a>';
+    list.appendChild(item);
+  });
 }
 
 function _fmtDate(str){
