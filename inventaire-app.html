@@ -187,6 +187,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .correct-comment{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--sans);font-size:14px;padding:12px;outline:none;margin-bottom:16px;resize:none;height:72px;}
 .correct-comment:focus{border-color:var(--accent);}
 .correct-btns{display:flex;gap:10px;}
+.log-equipe{font-family:var(--mono);font-size:10px;color:var(--accent);background:var(--accent-dim);border:1px solid var(--accent);border-radius:8px;padding:2px 6px;flex-shrink:0;}
+.cam-rotate-btn{position:absolute;top:20px;left:64px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.2);border-radius:20px;color:#fff;font-family:var(--mono);font-size:11px;padding:6px 10px;cursor:pointer;letter-spacing:0.06em;}
+.cam-rotate-btn.active{background:rgba(26,111,232,0.6);border-color:#1a6fe8;}
+.cam-viewfinder.vertical{width:72px;height:200px;}
 /* ── BACKUP ── */
 .backup-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px;}
 .backup-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
@@ -208,8 +212,8 @@ const CONFIG = {
   SHEET_ENSEMBLE:   "TABLEAU ENSEMBLE",
   SHEET_INVENTAIRE: "Inventaire V1",
   SHEET_REGLAGES:   "Réglages",
-  APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbzUoxQET7AwmJ4L4PVrreqsJOVR3BsGBGHittvNVKbS5hRSRMm3VXmIlo5cwqpk0RxgLQ/exec",
-  VERSION: "v5.18 — 14/04/2026"
+  APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbx3rL66GKU-mXX7N0adv7Z9rRb8n3dU4VnBTzv_8qsceqWg6qEPZ62qqDeaWrKUMSWNXA/exec",
+  VERSION: "v5.20 — 14/04/2026"
 };
 </script>
 
@@ -278,6 +282,10 @@ const CONFIG = {
     <div>
       <div class="scan-label" style="margin-bottom:6px;">Zone / Secteur</div>
       <input type="text" id="zone-scan-input" class="ref-input" style="font-size:16px;letter-spacing:0.02em;text-transform:uppercase;font-family:var(--sans);" placeholder="ex: RAYON A, RÉSERVE…" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+    </div>
+    <div>
+      <div class="scan-label" style="margin-bottom:6px;">Commentaire</div>
+      <input type="text" id="comment-input" class="ref-input" style="font-size:14px;letter-spacing:0.02em;text-transform:none;font-family:var(--sans);" placeholder="Optionnel — ex: palette incomplète…" autocomplete="off" spellcheck="false">
     </div>
     <div class="divider"></div>
     <div class="qty-section">
@@ -422,6 +430,7 @@ const CONFIG = {
   </div>
   <div class="cam-status" id="cam-status">Initialisation…</div>
   <button class="cam-close" id="cam-close">✕</button>
+  <button class="cam-rotate-btn" id="cam-rotate-btn" onclick="toggleCamOrientation()">⟳ Portrait</button>
   <button class="cam-scan-btn" id="cam-scan-btn">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -454,6 +463,11 @@ let currentUser='', catalogue={}, currentRef=null;
 let scanCount=0, camStream=null, ocrWorker=null, ocrReady=false, isScanning=false, lineCount=0;
 const userPermissions={};
 const userPasswords={};
+const userTeams={};
+let camPortrait=false;
+const COUNTER_KEY='inv_scan_counter';
+function getSessionCounter(){return parseInt(localStorage.getItem(COUNTER_KEY)||'0');}
+function incrSessionCounter(){const n=getSessionCounter()+1;localStorage.setItem(COUNTER_KEY,String(n));return n;}
 let adminThreshold=20;
 
 // ── VERSION ──
@@ -508,7 +522,7 @@ function enableRefreshProtection(){
 }
 function cancelRefresh(){document.getElementById('refresh-overlay').classList.remove('active');}
 function doRefresh(){window.onbeforeunload=null;window.location.reload();}
-function confirmQuit(){window.onbeforeunload=null;sessionStorage.clear();window.location.reload();}
+function confirmQuit(){window.onbeforeunload=null;sessionStorage.clear();localStorage.removeItem(COUNTER_KEY);window.location.reload();}
 
 window.addEventListener('keydown',function(e){
   if(!document.getElementById('screen-main').classList.contains('active'))return;
@@ -552,8 +566,10 @@ async function loadUsers(){
       if(!name)return;
       const perm=(row.c[1]?.v??row.c[1]?.f??'').toString().trim().toLowerCase();
       const pwd=(row.c[2]?.v??row.c[2]?.f??'').toString().trim();
+      const team=parseInt((row.c[3]?.v??row.c[3]?.f??'').toString().trim())||0;
       userPermissions[name]=perm;
       userPasswords[name]=pwd;
+      userTeams[name]=team;
       const o=document.createElement('option');
       o.value=name;o.textContent=name;
       sel.appendChild(o);
@@ -589,8 +605,9 @@ async function loadCatalogue(){
       const ref=raw.toString().replace(/\.0$/,'').trim().toUpperCase();
       const lib=(row.c[1]?.v??row.c[1]?.f??'').toString().trim();
       const stock=row.c[2]?.v??null;
+      const zoneHint=(row.c[4]?.v??row.c[4]?.f??'').toString().trim();
       const colisage=row.c[5]?.v??null;
-      if(ref)catalogue[ref]={libelle:lib,stock,type:'BASE',colisage:colisage==1};
+      if(ref)catalogue[ref]={libelle:lib,stock,type:'BASE',colisage:colisage==1,zoneHint};
     });
     const jsonE=await fetchSheet(CONFIG.SHEET_ENSEMBLE);
     const seen=new Set();
@@ -682,6 +699,7 @@ async function startSession(){
   document.getElementById('display-user').textContent=currentUser;
   sessionStorage.setItem('inv_user',currentUser);
   sessionStorage.setItem('inv_perm',userPermissions[currentUser]||'');
+  sessionStorage.setItem('inv_team',String(userTeams[currentUser]||0));
   showScreen('screen-main');
   history.pushState({screen:'main'},'');
   enableRefreshProtection();
@@ -845,7 +863,8 @@ async function loadSuspects(){
       const ref=(row.c[0]?.v??row.c[0]?.f??'').toString().trim().toUpperCase();
       const qty=row.c[2]?.v??0;
       const user=(row.c[6]?.v??row.c[6]?.f??'').toString().trim();
-      if(!ref)return;
+      const rtype=(row.c[8]?.v??row.c[8]?.f??'').toString().trim().toUpperCase();
+      if(!ref||rtype==='INCONNU')return;
       stockCompte[ref]=(stockCompte[ref]||0)+qty;
       stockUser[ref]=user;
     });
@@ -1066,6 +1085,9 @@ function lookupRef(ref){
       document.getElementById('mult-custom').style.display='none';
     }
     vBtn.disabled=false;
+    // Mettre à jour le placeholder zone selon la ref
+    const _zi=document.getElementById('zone-scan-input');
+    if(_zi)_zi.placeholder=art.zoneHint||'ex: 12A';
   }else{
     input.className='ref-input not-found';card.className='article-card not-found';
     document.getElementById('article-name').textContent='Référence inconnue';
@@ -1073,6 +1095,8 @@ function lookupRef(ref){
     document.getElementById('article-type-badge').innerHTML='<span class="type-badge inconnu">INCONNU</span>';
     document.getElementById('unite-row').style.display='none';
     document.getElementById('colisage-warning').style.display='none';
+    const _zi2=document.getElementById('zone-scan-input');
+    if(_zi2)_zi2.placeholder='ex: 12A';
     currentRef=ref;vBtn.disabled=false;
   }
 }
@@ -1105,12 +1129,13 @@ function removeLine(id){
   if(!document.getElementById('count-lines').children.length)addCountLine();
 }
 
+function parseQty(el){return Math.max(0,parseInt((el&&el.value!==''?el.value:'0'))||0);}
 function updateTotal(){
   let total=0;
   document.querySelectorAll('.count-line').forEach(line=>{
     const id=line.id.replace('line-','');
-    const q=parseInt(document.getElementById('qty-'+id)?.value)||0;
-    const n=parseInt(document.getElementById('nb-'+id)?.value)||0;
+    const q=parseQty(document.getElementById('qty-'+id));
+    const n=parseQty(document.getElementById('nb-'+id));
     const s=q*n;
     const se=document.getElementById('sub-'+id);if(se)se.textContent='= '+s;
     total+=s;
@@ -1163,29 +1188,32 @@ async function validate(){
     zi.addEventListener('input',function ze(){zi.style.borderColor='';zi.removeEventListener('input',ze);});
     zi.focus();btn.disabled=false;btn.classList.remove('loading');return;
   }
-  const payload={action:'addScan',ref,libelle,qty:qtyTotal,conditionnement,detailComptage:lignes.join('\n'),zone,user:currentUser,timestamp:localTimestamp()};
+  const commentaire=document.getElementById('comment-input')?.value.trim()||'';
   const localId=Date.now()+Math.random().toString(36).slice(2);
   const name=libelle||ref;
-  if(navigator.onLine){
-    try{
-      await sendPayload(payload);
-      addLog(localId,ref,name,qtyTotal,false);
-      document.getElementById('stat-count').textContent=++scanCount;
-      saveLogs();showToast('✓ Référence validée','success');
-    }catch{
-      const q=getQueue();q.push({localId,payload});saveQueue(q);
-      addLog(localId,ref,name,qtyTotal,true);
-      document.getElementById('stat-count').textContent=++scanCount;
-      saveLogs();showToast("Hors-ligne — en file d'attente",'warn');
-    }
-  }else{
-    const q=getQueue();q.push({localId,payload});saveQueue(q);
-    addLog(localId,ref,name,qtyTotal,true);
-    document.getElementById('stat-count').textContent=++scanCount;
-    saveLogs();showToast("Hors-ligne — en file d'attente",'warn');
-  }
+  const team=parseInt(sessionStorage.getItem('inv_team'))||0;
+  const counter=incrSessionCounter();
+  const numEquipe=team?String(team*1000+counter):String(counter);
+  const payload={
+    action:'addScan',ref,libelle,qty:qtyTotal,conditionnement,
+    detailComptage:lignes.join('\n'),zone,
+    commentaire,numEquipe,scanId:localId,
+    user:currentUser,timestamp:localTimestamp()
+  };
+  // Réinitialisation instantanée
+  addLog(localId,ref,name,qtyTotal,true,numEquipe);
+  document.getElementById('stat-count').textContent=++scanCount;
+  saveLogs();
   btn.disabled=false;btn.classList.remove('loading');
   resetScan();
+  // Envoi arrière-plan
+  const _confirmLog=()=>{const el=document.getElementById('log-'+localId);if(el){el.classList.remove('log-pending');el.querySelector('.log-badge')?.remove();}saveLogs();};
+  if(navigator.onLine){
+    (async()=>{try{await sendPayload(payload);_confirmLog();showToast('✓ Référence validée','success');}catch{getQueue().push&&saveQueue([...getQueue(),{localId,payload}]);}})();
+  }else{
+    const q=getQueue();q.push({localId,payload});saveQueue(q);
+    showToast("Hors-ligne — en file d'attente",'warn');
+  }
 }
 
 function resetScan(){
@@ -1205,14 +1233,16 @@ function resetScan(){
   document.getElementById('unite-row').style.display='none';
   document.getElementById('colisage-warning').style.display='none';
   hideSuggestions();
-  const zi=document.getElementById('zone-scan-input');if(zi)zi.value='';
+  const zi=document.getElementById('zone-scan-input');if(zi){zi.value='';zi.placeholder='ex: 12A';}
+  const ci=document.getElementById('comment-input');if(ci)ci.value='';
 }
 
-function addLog(localId,ref,name,qty,pending){
+function addLog(localId,ref,name,qty,pending,numEquipe){
   const time=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  const badge=numEquipe?`<span class="log-equipe">#${numEquipe}</span>`:'';
   const item=document.createElement('div');
   item.className='log-item'+(pending?' log-pending':'');item.id='log-'+localId;
-  item.innerHTML=`<span class="log-ref">${ref}</span><span class="log-name">${name}</span><span class="log-qty">${qty}</span><span class="log-time">${time}</span>${pending?'<span class="log-badge">en attente</span>':''}`;
+  item.innerHTML=`<span class="log-ref">${ref}</span><span class="log-name">${name}</span><span class="log-qty">${qty}</span>${badge}<span class="log-time">${time}</span>${pending?'<span class="log-badge">en attente</span>':''}`;
   document.getElementById('log-list').prepend(item);
 }
 function saveLogs(){
@@ -1246,6 +1276,7 @@ async function openCamera(){
     document.getElementById('cam-status').textContent='Prêt — appuyez pour scanner';
     document.getElementById('cam-status').className='cam-status ready';
   }catch(e4){showToast('Erreur OCR init: '+e4.message,'error');}
+  try{if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('portrait-primary').catch(function(){});}catch(e){}
 }
 
 // ── OCR HELPERS ──
@@ -1381,11 +1412,23 @@ async function triggerOCR(){
   isScanning=false;
 }
 
+function toggleCamOrientation(){
+  camPortrait=!camPortrait;
+  const vf=document.querySelector('.cam-viewfinder');
+  const btn=document.getElementById('cam-rotate-btn');
+  if(vf)vf.classList.toggle('vertical',camPortrait);
+  if(btn){btn.classList.toggle('active',camPortrait);btn.textContent=camPortrait?'⟳ Paysage':'⟳ Portrait';}
+}
+
 function closeCamera(){
   if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null;}
   ocrReady=false;isScanning=false;
   document.getElementById('cam-overlay').classList.remove('active');
   document.getElementById('cam-scan-btn').classList.remove('scanning');
+  camPortrait=false;
+  const _vf=document.querySelector('.cam-viewfinder');if(_vf)_vf.classList.remove('vertical');
+  const _rb=document.getElementById('cam-rotate-btn');if(_rb){_rb.classList.remove('active');_rb.textContent='⟳ Portrait';}
+  try{if(screen.orientation&&screen.orientation.unlock)screen.orientation.unlock();}catch(e){}
 }
 
 function showConfirmModal(ref,photoUrl){
