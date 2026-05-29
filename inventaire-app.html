@@ -213,7 +213,7 @@ const CONFIG = {
   SHEET_INVENTAIRE: "Inventaire V1",
   SHEET_REGLAGES:   "Réglages",
   APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbx3rL66GKU-mXX7N0adv7Z9rRb8n3dU4VnBTzv_8qsceqWg6qEPZ62qqDeaWrKUMSWNXA/exec",
-  VERSION: "v5.21 — 14/04/2026"
+  VERSION: "v5.22 — 14/04/2026"
 };
 </script>
 
@@ -285,7 +285,7 @@ const CONFIG = {
     </div>
     <div>
       <div class="scan-label" style="margin-bottom:6px;">Commentaire</div>
-      <input type="text" id="comment-input" class="ref-input" style="font-size:14px;letter-spacing:0.02em;text-transform:none;font-family:var(--sans);" placeholder="Optionnel — ex: tant emballés, sans visserie…" autocomplete="off" spellcheck="false" style="font-size:14px;letter-spacing:0.02em;text-transform:none;font-family:var(--sans);width:100%;box-sizing:border-box;">
+      <input type="text" id="comment-input" placeholder="Optionnel — ex: tant emballés, sans visserie…" autocomplete="off" spellcheck="false" style="display:block;width:100%;box-sizing:border-box;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--sans);font-size:14px;padding:12px 14px;outline:none;transition:border-color 0.2s;">
     </div>
     <div class="divider"></div>
     <div class="qty-section">
@@ -307,7 +307,6 @@ const CONFIG = {
         </div>
         <input type="number" id="mult-custom" class="field-input" placeholder="Taille du lot (ex: 6)" style="display:none;margin-top:8px;" inputmode="numeric" min="1">
       </div>
-      <div id="next-scan-num" style="display:none;font-family:var(--mono);font-size:12px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 14px;text-align:center;letter-spacing:0.06em;"></div>
       <button class="btn-validate" id="btn-validate" disabled>
         <div class="spinner"></div>
         <span class="btn-text">Valider</span>
@@ -334,12 +333,8 @@ const CONFIG = {
     <div id="suspect-threshold" style="font-size:12px;color:var(--text2);margin-top:-4px;"></div>
     <div id="suspect-list"><div class="admin-empty">Chargement…</div></div>
     <div class="admin-section-title" style="margin-top:4px;">Numérotation des scans</div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-      <div>
-        <div style="font-size:13px;font-weight:500;">Compteur actuel</div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--text2);margin-top:4px;" id="admin-counter-display">—</div>
-      </div>
-      <button onclick="resetScanCounter()" style="background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger);border-radius:var(--r-sm);font-family:var(--sans);font-size:13px;font-weight:600;padding:8px 14px;cursor:pointer;white-space:nowrap;">Remettre à 0</button>
+    <div id="admin-counter-display" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;">
+      <div style="color:var(--text2);font-size:13px;">Chargement…</div>
     </div>
     <div class="admin-section-title" style="margin-top:4px;">Sauvegarde automatique</div>
     <div class="backup-card">
@@ -474,9 +469,11 @@ const userPermissions={};
 const userPasswords={};
 const userTeams={};
 let camPortrait=false;
-const COUNTER_KEY='inv_scan_counter';
-function getSessionCounter(){return parseInt(localStorage.getItem(COUNTER_KEY)||'0');}
-function incrSessionCounter(){const n=getSessionCounter()+1;localStorage.setItem(COUNTER_KEY,String(n));return n;}
+const COUNTER_PFX='inv_scan_counter_';
+function getTeamCounter(t){return parseInt(localStorage.getItem(COUNTER_PFX+(t||0))||'0');}
+function setTeamCounter(t,v){localStorage.setItem(COUNTER_PFX+(t||0),String(Math.max(0,parseInt(v)||0)));}
+function getSessionCounter(){return getTeamCounter(parseInt(sessionStorage.getItem('inv_team'))||0);}
+function incrSessionCounter(){const t=parseInt(sessionStorage.getItem('inv_team'))||0;const n=getTeamCounter(t)+1;setTeamCounter(t,n);return n;}
 let adminThreshold=20;
 
 // ── VERSION ──
@@ -531,7 +528,7 @@ function enableRefreshProtection(){
 }
 function cancelRefresh(){document.getElementById('refresh-overlay').classList.remove('active');}
 function doRefresh(){window.onbeforeunload=null;window.location.reload();}
-function confirmQuit(){window.onbeforeunload=null;sessionStorage.clear();localStorage.removeItem(COUNTER_KEY);if(currentUser)localStorage.removeItem('inv_logs_'+currentUser);window.location.reload();}
+function confirmQuit(){window.onbeforeunload=null;sessionStorage.clear();window.location.reload();}
 
 window.addEventListener('keydown',function(e){
   if(!document.getElementById('screen-main').classList.contains('active'))return;
@@ -636,13 +633,47 @@ async function loadUserCount(){
   try{
     const json=await fetchSheet(CONFIG.SHEET_INVENTAIRE);
     const rows=json.table.rows||[];
-    const count=rows.filter(row=>{
+    const userRows=rows.filter(row=>{
       if(!row||!row.c)return false;
       return (row.c[6]?.v??row.c[6]?.f??'').toString().trim()===currentUser;
-    }).length;
-    scanCount=count;
+    });
+    scanCount=userRows.length;
     document.getElementById('stat-count').textContent=scanCount;
     sessionStorage.setItem('inv_count',scanCount);
+    // Restaurer log depuis le sheet si localStorage vide
+    const logKey='inv_logs_'+currentUser;
+    if(!localStorage.getItem(logKey)&&userRows.length){
+      const list=document.getElementById('log-list');
+      if(list){
+        userRows.slice(-80).reverse().forEach(row=>{
+          const ref=(row.c[0]?.v??row.c[0]?.f??'').toString().trim();
+          const name=(row.c[1]?.v??row.c[1]?.f??'').toString().trim()||ref;
+          const qty=row.c[2]?.v??0;
+          const numEq=(row.c[10]?.v??row.c[10]?.f??'').toString().trim();
+          if(!ref)return;
+          const badge=numEq?'<span class="log-equipe">#'+numEq+'</span>':'';
+          const item=document.createElement('div');
+          item.className='log-item';
+          item.innerHTML='<span class="log-ref">'+ref+'</span><span class="log-name">'+name+'</span><span class="log-qty">'+qty+'</span>'+badge+'<span class="log-time" style="color:var(--text3);font-size:9px;">sheet</span>';
+          list.appendChild(item);
+        });
+        saveLogs();
+      }
+    }
+    // Restaurer compteur depuis le sheet si absent du localStorage
+    const team=parseInt(sessionStorage.getItem('inv_team'))||0;
+    if(team&&!localStorage.getItem(COUNTER_PFX+team)&&userRows.length){
+      for(let i=userRows.length-1;i>=0;i--){
+        const numStr=(userRows[i].c[10]?.v??userRows[i].c[10]?.f??'').toString().trim();
+        if(numStr){
+          const parsed=parseInt(numStr);
+          if(parsed>=team*1000&&parsed<(team+1)*1000){
+            setTeamCounter(team,parsed-team*1000);
+            break;
+          }
+        }
+      }
+    }
   }catch(e){}
 }
 
@@ -1031,29 +1062,55 @@ function _fmtDate(str){
 }
 
 
-function resetScanCounter(){
-  if(!confirm('Remettre le compteur de numérotation à 0 ?'))return;
-  localStorage.removeItem(COUNTER_KEY);
+function setTeamCounterFromAdmin(team){
+  const inp=document.getElementById('cinp-'+team);
+  if(!inp)return;
+  const nextNum=parseInt(inp.value)||0;
+  const counter=Math.max(0,nextNum-team*1000-1);
+  setTeamCounter(team,counter);
+  showToast('Équipe '+team+' — prochain scan #'+(team*1000+counter+1),'success');
   updateScanNumDisplay();
-  showToast('Compteur remis à 0','success');
   updateAdminCounterDisplay();
 }
 function updateAdminCounterDisplay(){
   const el=document.getElementById('admin-counter-display');
   if(!el)return;
-  const team=parseInt(sessionStorage.getItem('inv_team'))||0;
-  const n=getSessionCounter();
-  el.textContent=team?('Dernier scan : #'+String(team*1000+n)):('Dernier scan : #'+String(n).padStart(3,'0'));
-  if(n===0)el.textContent='Aucun scan effectué';
+  // Scanner toutes les équipes 1-9 qui ont un compteur
+  const teams=[];
+  for(let t=1;t<=9;t++){
+    const v=localStorage.getItem(COUNTER_PFX+t);
+    if(v!==null)teams.push({t,n:parseInt(v)||0});
+  }
+  if(!teams.length){
+    el.innerHTML='<div style="color:var(--text2);font-size:13px;">Aucun scan effectué sur cet appareil</div>';
+    return;
+  }
+  el.innerHTML=teams.map(({t,n})=>{
+    const last=t*1000+n;
+    const next=t*1000+n+1;
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">'+
+      '<div><span style="font-family:var(--mono);font-size:12px;font-weight:500;">Équipe '+t+'</span>'+
+      '<span style="font-family:var(--mono);font-size:11px;color:var(--text2);margin-left:8px;">dernier : #'+last+'</span></div>'+
+      '<div style="display:flex;gap:6px;align-items:center;">'+
+      '<input id="cinp-'+t+'" type="number" inputmode="numeric" value="'+next+'" min="'+t*1000+'" style="width:72px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);font-family:var(--mono);font-size:13px;padding:6px 8px;color:var(--text);outline:none;text-align:center;" onkeydown="if(event.key==='Enter')setTeamCounterFromAdmin('+t+')">'+
+      '<button onclick="setTeamCounterFromAdmin('+t+')" style="background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);font-size:12px;font-weight:600;padding:6px 10px;cursor:pointer;white-space:nowrap;">OK</button>'+
+      '</div></div>';
+  }).join('')+'<div style="margin-top:8px;"><button onclick="resetAllCounters()" style="background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger);border-radius:var(--r-sm);font-size:12px;font-weight:600;padding:6px 14px;cursor:pointer;width:100%;">Tout remettre à 0</button></div>';
+}
+function resetAllCounters(){
+  if(!confirm('Remettre TOUS les compteurs à 0 ?'))return;
+  for(let t=0;t<=9;t++)localStorage.removeItem(COUNTER_PFX+t);
+  updateScanNumDisplay();
+  updateAdminCounterDisplay();
+  showToast('Tous les compteurs remis à 0','success');
 }
 function updateScanNumDisplay(){
-  const el=document.getElementById('next-scan-num');
-  if(!el||!currentUser)return;
-  el.style.display='block';
+  if(!currentUser)return;
   const team=parseInt(sessionStorage.getItem('inv_team'))||0;
   const next=getSessionCounter()+1;
   const num=team?String(team*1000+next):String(next).padStart(3,'0');
-  el.textContent='Prochain scan : #'+num;
+  const span=document.querySelector('#btn-validate .btn-text');
+  if(span)span.textContent='Valider (#'+num+')';
 }
 // ── SUGGESTIONS ──
 function showSuggestions(val){
