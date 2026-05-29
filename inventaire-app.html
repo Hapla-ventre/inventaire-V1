@@ -1075,7 +1075,6 @@ function setTeamCounterFromAdmin(team){
 function updateAdminCounterDisplay(){
   const el=document.getElementById('admin-counter-display');
   if(!el)return;
-  // Scanner toutes les équipes 1-9 qui ont un compteur
   const teams=[];
   for(let t=1;t<=9;t++){
     const v=localStorage.getItem(COUNTER_PFX+t);
@@ -1085,17 +1084,40 @@ function updateAdminCounterDisplay(){
     el.innerHTML='<div style="color:var(--text2);font-size:13px;">Aucun scan effectué sur cet appareil</div>';
     return;
   }
-  el.innerHTML=teams.map(({t,n})=>{
+  el.innerHTML='';
+  teams.forEach(function(item){
+    const t=item.t,n=item.n;
     const last=t*1000+n;
     const next=t*1000+n+1;
-    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">'+
-      '<div><span style="font-family:var(--mono);font-size:12px;font-weight:500;">Équipe '+t+'</span>'+
-      '<span style="font-family:var(--mono);font-size:11px;color:var(--text2);margin-left:8px;">dernier : #'+last+'</span></div>'+
-      '<div style="display:flex;gap:6px;align-items:center;">'+
-      '<input id="cinp-'+t+'" type="number" inputmode="numeric" value="'+next+'" min="'+t*1000+'" style="width:72px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);font-family:var(--mono);font-size:13px;padding:6px 8px;color:var(--text);outline:none;text-align:center;" onkeydown="if(event.key==='Enter')setTeamCounterFromAdmin('+t+')">'+
-      '<button onclick="setTeamCounterFromAdmin('+t+')" style="background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);font-size:12px;font-weight:600;padding:6px 10px;cursor:pointer;white-space:nowrap;">OK</button>'+
-      '</div></div>';
-  }).join('')+'<div style="margin-top:8px;"><button onclick="resetAllCounters()" style="background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger);border-radius:var(--r-sm);font-size:12px;font-weight:600;padding:6px 14px;cursor:pointer;width:100%;">Tout remettre à 0</button></div>';
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);';
+    const info=document.createElement('div');
+    info.innerHTML='<span style="font-family:var(--mono);font-size:12px;font-weight:500;">Équipe '+t+'</span><span style="font-family:var(--mono);font-size:11px;color:var(--text2);margin-left:8px;">dernier : #'+last+'</span>';
+    const controls=document.createElement('div');
+    controls.style.cssText='display:flex;gap:6px;align-items:center;';
+    const inp=document.createElement('input');
+    inp.id='cinp-'+t;
+    inp.type='number';
+    inp.inputMode='numeric';
+    inp.value=String(next);
+    inp.min=String(t*1000);
+    inp.style.cssText='width:72px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);font-family:var(--mono);font-size:13px;padding:6px 8px;color:var(--text);outline:none;text-align:center;';
+    const okBtn=document.createElement('button');
+    okBtn.textContent='OK';
+    okBtn.style.cssText='background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);font-size:12px;font-weight:600;padding:6px 10px;cursor:pointer;white-space:nowrap;';
+    okBtn.addEventListener('click',function(){setTeamCounterFromAdmin(t);});
+    controls.appendChild(inp);controls.appendChild(okBtn);
+    row.appendChild(info);row.appendChild(controls);
+    el.appendChild(row);
+  });
+  const resetRow=document.createElement('div');
+  resetRow.style.marginTop='8px';
+  const resetBtn=document.createElement('button');
+  resetBtn.textContent='Tout remettre à 0';
+  resetBtn.style.cssText='background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger);border-radius:var(--r-sm);font-size:12px;font-weight:600;padding:6px 14px;cursor:pointer;width:100%;';
+  resetBtn.addEventListener('click',resetAllCounters);
+  resetRow.appendChild(resetBtn);
+  el.appendChild(resetRow);
 }
 function resetAllCounters(){
   if(!confirm('Remettre TOUS les compteurs à 0 ?'))return;
