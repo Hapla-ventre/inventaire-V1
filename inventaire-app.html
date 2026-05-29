@@ -213,7 +213,7 @@ const CONFIG = {
   SHEET_INVENTAIRE: "Inventaire V1",
   SHEET_REGLAGES:   "Réglages",
   APPS_SCRIPT_URL:  "https://script.google.com/macros/s/AKfycbx3rL66GKU-mXX7N0adv7Z9rRb8n3dU4VnBTzv_8qsceqWg6qEPZ62qqDeaWrKUMSWNXA/exec",
-  VERSION: "v5.23 — 14/04/2026"
+  VERSION: "v5.24 — 14/04/2026"
 };
 </script>
 
@@ -677,19 +677,22 @@ async function loadUserCount(){
       saveLogs();
     }
 
-    // Restaurer le compteur depuis le sheet si absent du localStorage
+    // Recalibrer le compteur depuis le sheet (TOUJOURS, même si localStorage existe)
+    // Ainsi si le sheet est vidé, le compteur repart de 0
     const team=parseInt(sessionStorage.getItem('inv_team'))||0;
-    if(team&&!localStorage.getItem(COUNTER_PFX+team)&&userRows.length){
-      for(let i=userRows.length-1;i>=0;i--){
-        const numStr=(userRows[i].c[10]?.v??userRows[i].c[10]?.f??'').toString().trim();
+    if(team){
+      let maxCounter=0;
+      userRows.forEach(function(row){
+        const numStr=(row.c[10]?.v??row.c[10]?.f??'').toString().trim();
         if(numStr){
           const parsed=parseInt(numStr);
           if(parsed>=team*1000&&parsed<(team+1)*1000){
-            setTeamCounter(team,parsed-team*1000);
-            break;
+            const counter=parsed-team*1000;
+            if(counter>maxCounter)maxCounter=counter;
           }
         }
-      }
+      });
+      setTeamCounter(team,maxCounter);
       updateScanNumDisplay();
     }
   }catch(e){}
